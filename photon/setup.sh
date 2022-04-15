@@ -102,3 +102,6 @@ Gateway=z.z.z.z
 # systemctl restart systemd-networkd
 EOF
 
+chmod 644 /root/99-static.network
+
+
