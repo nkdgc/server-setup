@@ -80,3 +80,25 @@ echo "--- create .tmux.conf (${NON_ROOT_USERNAME})"
 cp /root/.tmux.conf /home/${NON_ROOT_USERNAME}/.tmux.conf
 chown ${NON_ROOT_USERNAME}:users /home/${NON_ROOT_USERNAME}/.tmux.conf
 
+echo "--- create network file template"
+
+cat <<EOF > /root/.tmux.conf
+[Match]
+Name=eth0
+
+[Network]
+Address=x.x.x.x/y
+Gateway=z.z.z.z
+
+# [Route]
+# Gateway=x.x.x.x/y
+# Destination=z.z.z.z
+# 
+# [Route]
+# Gateway=x.x.x.x/y
+# Destination=z.z.z.z
+
+# /etc/systemd/network/
+# systemctl restart systemd-networkd
+EOF
+
