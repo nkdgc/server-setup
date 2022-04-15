@@ -82,7 +82,7 @@ chown ${NON_ROOT_USERNAME}:users /home/${NON_ROOT_USERNAME}/.tmux.conf
 
 echo "--- create network file template"
 
-cat <<EOF > /root/.tmux.conf
+cat <<EOF > /root/99-static.network
 [Match]
 Name=eth0
 
