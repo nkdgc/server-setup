@@ -102,8 +102,10 @@ Gateway=z.z.z.z
 # systemctl restart systemd-networkd
 EOF
 
+chmod 644 /root/99-static.network
+
 echo "--- set PS1"
-cat << 'EOF' >> /etc/bash.bashrc
+cat << 'EOF' >> /etc/profile
 NORMAL="\[\e[0m\]"
 RED="\[\e[1;31m\]"
 GREEN="\[\e[1;32m\]"
@@ -117,5 +119,6 @@ fi
 PS1="${PS1_COLOR}\u@\h {\D{%Y/%m/%d} \t} [ ${NORMAL}\w${PS1_COLOR} ]\\$ ${NORMAL}"
 EOF
 
-chmod 644 /root/99-static.network
+echo "--- set timezone"
+timedatectl set-timezone Asia/Tokyo
 
