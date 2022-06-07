@@ -116,7 +116,7 @@ else
   # non root user
   PS1_COLOR="${GREEN}"
 fi
-PS1="${PS1_COLOR}\u@\h {\D{%Y/%m/%d} \t} [ ${NORMAL}\w${PS1_COLOR} ]\\$ ${NORMAL}"
+PS1="${PS1_COLOR}\u@\h [ ${NORMAL}\w${PS1_COLOR} ]\\$ ${NORMAL}"
 EOF
 
 echo "--- set timezone"
