@@ -14,10 +14,12 @@ passwd
 
 echo "--- Set aliases"
 cat <<EOF > /root/.bashrc
+alias ll='ls -l'
 set -o vi
 EOF
 
 cat <<EOF > /home/${NON_ROOT_USERNAME}/.bashrc
+alias ll='ls -l'
 set -o vi
 EOF
 
@@ -35,10 +37,17 @@ echo "--- apt update"
 apt update
 
 echo "--- apt upgrade"
-apt upgrade
+apt upgrade -y
 
-echo "--- apt install vim/git/tmux/..."
-apt install -y vim git traceroute tmux vino dconf-editor
+echo "--- apt install vim/git/openssh-server/tmux/..."
+apt install -y vim git openssh-server traceroute tmux vino dconf-editor
+
+echo "--- allow ssh root login"
+SSH_BASE_DIR="/etc/ssh"
+cat ${SSH_BASE_DIR}/sshd_config | sed -e "s/^#PermitRootLogin.*$/PermitRootLogin yes/g" > ${SSH_BASE_DIR}/sshd_config.mod
+mv ${SSH_BASE_DIR}/sshd_config.mod ${SSH_BASE_DIR}/sshd_config
+
+systemctl restart sshd
 
 echo "--- create .vimrc (root)"
 
@@ -149,5 +158,4 @@ else
 fi
 PS1="${PS1_COLOR}\u@\h [ ${NORMAL}\w${PS1_COLOR} ]\\$ ${NORMAL}"
 EOF
-
 
