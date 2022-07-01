@@ -13,14 +13,22 @@ passwd
 
 
 echo "--- Set aliases"
-cat <<EOF > /root/.bashrc
+cat <<EOF >> /root/.bashrc
 alias ll='ls -l'
 set -o vi
+source <(tanzu completion bash)
+source <(kubectl completion bash)
+alias k=kubectl
+source <(kubectl completion bash | sed -e 's/kubectl/k/g')
 EOF
 
-cat <<EOF > /home/${NON_ROOT_USERNAME}/.bashrc
+cat <<EOF >> /home/${NON_ROOT_USERNAME}/.bashrc
 alias ll='ls -l'
 set -o vi
+source <(tanzu completion bash)
+source <(kubectl completion bash)
+alias k=kubectl
+source <(kubectl completion bash | sed -e 's/kubectl/k/g')
 EOF
 
 
