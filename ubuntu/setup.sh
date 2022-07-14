@@ -40,6 +40,8 @@ echo "--- add authorized key"
 echo ${SSH_AUTHORIZED_KEY} >> /root/.ssh/authorized_keys
 echo ${SSH_AUTHORIZED_KEY} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 
+echo "--- change apt repository to ftp.riken.jp"
+perl -p -i.bak -e 's%(deb(?:-src|)\s+)https?://(?!archive\.canonical\.com|security\.ubuntu\.com)[^\s]+%$1http://ftp.riken.jp/Linux/ubuntu/%' /etc/apt/sources.list
 
 echo "--- apt update"
 apt update
