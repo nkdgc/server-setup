@@ -100,6 +100,10 @@ setw -g mode-keys vi
 bind -T copy-mode-vi v send -X begin-selection
 bind | split-window -h
 bind - split-window -v
+bind -r H resize-pane -L 1
+bind -r J resize-pane -D 1
+bind -r K resize-pane -U 1
+bind -r L resize-pane -R 1
 EOF
 
 echo "--- create .tmux.conf (${NON_ROOT_USERNAME})"
