@@ -124,6 +124,7 @@ cat <<EOF > /root/99-config.yaml
 network:
   ethernets:
     ens160:
+      # dhcp4: true
       addresses:
       - 192.168.1.2/24
       routes:
