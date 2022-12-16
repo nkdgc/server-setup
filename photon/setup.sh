@@ -126,6 +126,7 @@ EOF
 echo "--- set timezone"
 timedatectl set-timezone Asia/Tokyo
 
-echo "--- allow icmp on iptables"
-iptables -A INPUT -p icmp -j ACCEPT 
+echo "--- disable iptables"
+systemctl stop iptables
+systemctl disable iptables
 
