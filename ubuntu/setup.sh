@@ -50,7 +50,7 @@ echo "--- apt upgrade"
 apt upgrade -y
 
 echo "--- apt install vim/git/openssh-server/tmux/..."
-apt install -y vim git openssh-server traceroute tmux vino dconf-editor curl
+apt install -y vim git openssh-server traceroute tmux vino dconf-editor curl net-tools
 
 echo "--- allow ssh root login"
 SSH_BASE_DIR="/etc/ssh"
