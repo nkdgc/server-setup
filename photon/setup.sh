@@ -2,6 +2,8 @@
 
 NON_ROOT_USERNAME="vmware"
 
+SSH_AUTHORIZED_KEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC2xdFy6t0tncxWcgzBnrlOXjmbmTaEVdIrrKlLG0nQzCJOu6Jabs2tyKeNMuUuBBtL59yuQQfTAWZNcitVRxMX15rZ9CZKNQLr9lZ8w/ODWEpjfGjeQotT9YasAfgqEwc0aJ/QZZe9ZIQHgspszgP8wCTakjXKW0kxie/CtpIEk0l/BLybIegviptXxdPIneozZEt9RHALe3W2+zy0YDRoMUjopyxbtIjssVBMgPfCeROINfSecPkYwK0ig4Wa1bc6XCMklyeLWdmag5r8JQTPPZHVrk76z1UOGF9AFAmbjPVh+uRlKr49CMF3Balg1/DI5mUG6H5AEB75uV8rj1w+xUcU67w9vftpwUk2ohqsBRHtstlCmxN+uqcWOVQPzjSPx42w48nkzlqyZEx8FtIx1ENJRnTwzkfAeKg5UxfXRSDl2Ryh165lfWtLxMMZphegqxFhSLwJIMeXVBDzQT2e6BNELUU/B88VD15mxMx6S3GMuVdbrLG+WQULSq4mUkM="
+
 if [ "$(whoami)" != "root" ]; then
     echo "You're not a root user."
     exit 1
@@ -27,6 +29,10 @@ ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 
 echo "--- create ssh key (${NON_ROOT_USERNAME})"
 su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N \"\" -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
+
+echo "--- add authorized key"
+echo ${SSH_AUTHORIZED_KEY} >> /root/.ssh/authorized_keys
+echo ${SSH_AUTHORIZED_KEY} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 
 echo "--- tdnf install vim/less/diff.."
 tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof
