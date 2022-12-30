@@ -37,7 +37,7 @@ chown ${NON_ROOT_USERNAME}:users /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 chmod 600 /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 
 echo "--- tdnf install vim/less/diff.."
-tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof
+tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof unzip
 # difutils for diff
 # bindutils for dig
 
