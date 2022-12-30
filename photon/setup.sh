@@ -101,6 +101,7 @@ Name=eth0
 [Network]
 Address=x.x.x.x/y
 Gateway=z.z.z.z
+DNS=x.x.x.x
 
 # [Route]
 # Gateway=x.x.x.x/y
