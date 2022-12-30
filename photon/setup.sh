@@ -33,6 +33,8 @@ su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N \"\" -f /home/${NON_ROOT_USER
 echo "--- add authorized key"
 echo ${SSH_AUTHORIZED_KEY} >> /root/.ssh/authorized_keys
 echo ${SSH_AUTHORIZED_KEY} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
+chown ${NON_ROOT_USERNAME}:users /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
+chmod 600 /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 
 echo "--- tdnf install vim/less/diff.."
 tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof
