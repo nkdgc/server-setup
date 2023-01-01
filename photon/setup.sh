@@ -37,9 +37,10 @@ chown ${NON_ROOT_USERNAME}:users /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 chmod 600 /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
 
 echo "--- tdnf install vim/less/diff.."
-tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof unzip
+tdnf install -y vim less diffutils tar tmux tcpdump bindutils traceroute curl wget lsof unzip openssl-c_rehash
 # difutils for diff
 # bindutils for dig
+# openssl-c_rehash for /usr/bin/rehash_ca_certificates.sh (Import Root CA Certificate)
 
 echo "--- create .vimrc (root)"
 
