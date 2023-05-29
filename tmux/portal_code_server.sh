@@ -54,6 +54,11 @@ tmux rename-window -t ${session}:${page} "BE-Inventory"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/inventory" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8013 --host=0.0.0.0" Enter
 
+# 6: git
+page=6
+tmux new-window -t ${session}
+tmux rename-window -t ${session}:${page} "git"
+
 # attach
 tmux a -t ${session}
 
