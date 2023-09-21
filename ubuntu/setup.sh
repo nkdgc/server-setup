@@ -16,6 +16,7 @@ echo "--- Set aliases"
 cat <<EOF >> /root/.bashrc
 alias ll='ls -l'
 set -o vi
+export EDITOR=vim
 source <(tanzu completion bash)
 source <(kubectl completion bash)
 alias k=kubectl

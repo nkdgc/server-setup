@@ -21,6 +21,7 @@ echo "--- Set aliases"
 cat <<EOF > /etc/profile.d/aliases.sh
 alias ll='ls -l'
 set -o vi
+export EDITOR=vim
 EOF
 chmod 644 /etc/profile.d/aliases.sh
 
