@@ -181,5 +181,15 @@ else
   PS1_COLOR="${GREEN}"
 fi
 PS1="${PS1_COLOR}\u@\h [ ${NORMAL}\w${PS1_COLOR} ]\\$ ${NORMAL}"
+
+if [ -e /home/vmware/.kube-ps1.sh ]; then
+  source /home/vmware/.kube-ps1.sh
+  PS1='$(kube_ps1)'
+  PS1="${PS1} ${PS1_COLOR}\u@\h [ ${NORMAL}\w${PS1_COLOR} ] \\$ ${NORMAL}"
+fi
+
+alias kx=kubectx
+alias kn=kubens
+alias k='kubecolor'
 EOF
 
