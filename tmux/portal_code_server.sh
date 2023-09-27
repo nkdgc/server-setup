@@ -36,20 +36,24 @@ tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/portal_auth" E
 tmux send-keys -t ${session}:${page} "export EXPIRES_MINUTES=10" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8011 --host=0.0.0.0" Enter
 
-# 4: BE-vCenterVM
+# 4-1: BE-PortalAuth seed
 page=4
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BE-vCenterVM"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/portal_auth" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m seed.seed" Enter
+
+# 4-2: BE-vCenterVM
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/vcenter_vm" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_HOST=vcsa8.home.ndeguchi.com" Enter
-tmux send-keys -t ${session}:${page} "export VCENTER_PORT=443" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_USER=administrator@vsphere.local" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_PWD=VMware1!" Enter
-tmux send-keys -t ${session}:${page} "export VCENTER_CERT=True" Enter
+tmux send-keys -t ${session}:${page} "export VCENTER_CONSOLE_USER=console_user" Enter
+tmux send-keys -t ${session}:${page} "export VCENTER_CONSOLE_PWD=console_password" Enter
+tmux send-keys -t ${session}:${page} "export VCENTER_NAME=vcsa8" Enter
+tmux send-keys -t ${session}:${page} "poetry run pip install -r requirements.txt" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8012 --host=0.0.0.0" Enter
-	
+
 # 5: BE-Inventory
 page=5
 tmux new-window -t ${session}
