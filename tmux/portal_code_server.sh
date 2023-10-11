@@ -26,6 +26,7 @@ page=2
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BFF"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/bff/bff" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn main:app --reload --port 8010 --host=0.0.0.0" Enter
 
 # 3: BE-PortalAuth
@@ -33,6 +34,7 @@ page=3
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BE-PortalAuth"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/portal_auth" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "export EXPIRES_MINUTES=10" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8011 --host=0.0.0.0" Enter
 
@@ -45,6 +47,7 @@ tmux send-keys -t ${session}:${page} "poetry run python3 -m seed.seed" Enter
 
 # 4-2: BE-vCenterVM
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/vcenter_vm" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_HOST=vcsa8.home.ndeguchi.com" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_USER=administrator@vsphere.local" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_PWD=VMware1!" Enter
@@ -59,6 +62,7 @@ page=5
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BE-Inventory"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/inventory" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8013 --host=0.0.0.0" Enter
 
 # 6: BE-History
@@ -66,6 +70,7 @@ page=6
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BE-History"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/history" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8015 --host=0.0.0.0" Enter
 
 # 7: git
