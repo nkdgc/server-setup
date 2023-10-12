@@ -4,12 +4,11 @@ session="PORTAL"
 cd /home/coder/cloud-hub
 tmux new-session -d -s ${session}
 
-# 0: DB
+# 0: DB (migrateが走る前はDBが存在しないので60秒sleepする）
 page=0
 tmux rename-window -t ${session}:${page} "DB"
 tmux send-keys -t ${session}:${page} "echo '\pset pager off' > ~/.psqlrc" Enter
-tmux send-keys -t ${session}:${page} "PGPASSWORD=password psql -U postgres -h cloudhub-db -l" Enter
-tmux send-keys -t ${session}:${page} "PGPASSWORD=password psql -U postgres -h cloudhub-db -d vcenter_vm" Enter
+tmux send-keys -t ${session}:${page} "sleep 60; PGPASSWORD=password psql -U postgres -h cloudhub-db -l; PGPASSWORD=password psql -U postgres -h cloudhub-db -d vcenter_vm" Enter
 
 # 1: FE
 page=1
@@ -88,5 +87,4 @@ tmux rename-window -t ${session}:${page} "git"
 
 # attach
 tmux a -t ${session}
-
 
