@@ -7,9 +7,9 @@ tmux new-session -d -s ${session}
 # 0: DB
 page=0
 tmux rename-window -t ${session}:${page} "DB"
-tmux send-keys -t ${session}:${page} "psql -U postgres -h cloudhub-db -d cloudhub" Enter
-sleep 1
-tmux send-keys -t ${session}:${page} "password" Enter
+tmux send-keys -t ${session}:${page} "echo '\pset pager off' > ~/.psqlrc" Enter
+tmux send-keys -t ${session}:${page} "PGPASSWORD=password psql -U postgres -h cloudhub-db -l" Enter
+tmux send-keys -t ${session}:${page} "PGPASSWORD=password psql -U postgres -h cloudhub-db -d vcenter_vm" Enter
 
 # 1: FE
 page=1
@@ -41,11 +41,11 @@ tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app
 # 4-1: BE-PortalAuth seed
 page=4
 tmux new-window -t ${session}
-tmux rename-window -t ${session}:${page} "BE-vCenterVM"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/portal_auth" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m seed.seed" Enter
 
 # 4-2: BE-vCenterVM
+tmux rename-window -t ${session}:${page} "BE-vCenterVM"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/vcenter_vm" Enter
 tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "export VCENTER_HOST=vcsa8.home.ndeguchi.com" Enter
@@ -65,16 +65,24 @@ tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/inventory" Ent
 tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8013 --host=0.0.0.0" Enter
 
-# 6: BE-History
+# 6: BE-Notice
 page=6
+tmux new-window -t ${session}
+tmux rename-window -t ${session}:${page} "BE-Notice"
+tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/notice" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
+tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8014 --host=0.0.0.0" Enter
+
+# 7: BE-History
+page=7
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "BE-History"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/history" Enter
 tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8015 --host=0.0.0.0" Enter
 
-# 7: git
-page=7
+# 8: git
+page=8
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "git"
 
