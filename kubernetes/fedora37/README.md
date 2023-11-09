@@ -1,11 +1,11 @@
 # Fedora37 + Kubernetes + Proxy
 
-Proxy経由でインターネット疎通できる Fedora37 の上に kubeadm で Kubernetes を構築する手順。 \
-Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するため、適宜読み替えて実施する必要がある。
+Proxy経由でインターネット疎通できる Fedora37 の上に kubeadm で Kubernetes を構築する。 \
+Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するため、適宜読み替えて実施。
 
 ## Fedora 構築
 
-- 以下構成の Fedora を 5 台構築する。（ControlPlane: 3台, WorkerNode: 2台）
+- 以下の構成で Fedora を 5 台構築する。（ControlPlane: 3台, WorkerNode: 2台）
   - 仮想マシンスペック
     - CPU: 2 core
     - Mem: 4 GB
@@ -228,7 +228,7 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 
-## Cri-dockerd のインストール
+## cri-dockerd のインストール
 
 実施対象サーバ：5台全て
 
@@ -236,7 +236,7 @@ For more examples and ideas, visit:
 # 前提パッケージインストール
 dnf install -y git make go
 
-# git コマンドの proxy 設定
+# git コマンドの proxy 設定(環境に合わせてproxyサーバのIP/PortNoを変更すること)
 git config --global http.proxy http://192.168.13.2:8080
 
 # cri-dockerd をダウンロード
@@ -410,6 +410,10 @@ backend apiserver
     server k8s-cp03 192.168.13.23:6443 check
 ```
 
+- 192.168.13.21 〜 192.168.13.23
+  - ControlPlane#1-3 の IP アドレスを指定
+
+
 ```bash
 # haproxy.cfg の妥当性確認
 haproxy -c -f /etc/haproxy/haproxy.cfg
@@ -447,13 +451,17 @@ ip a
 
 実施対象サーバ：ControlPlane#2 のみで実施 **(注意)**
 
+```bash
 FIXME: SCP で CP01 からファイルを取得して一部修正する手順を書く
+```
 
 ## HAProxy(LB) の設定・起動 - ControlPlane#3
 
 実施対象サーバ：ControlPlane#3 のみで実施 **(注意)**
 
+```bash
 FIXME: SCP で CP01 からファイルを取得して一部修正する手順を書く
+```
 
 ## Kubernetes クラスタの起動
 
@@ -467,6 +475,7 @@ kubeadm init --control-plane-endpoint "vip-k8s-master.home.ndeguchi.com:8443" --
   - API サーバのドメイン名を指定
 
 ```
+<出力例: 上記コマンドの実行に成功すると、標準出力の末尾に以下と同様の情報が出力される>
 Your Kubernetes control-plane has initialized successfully!
 
 To start using your cluster, you need to run the following as a regular user:
