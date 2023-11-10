@@ -29,7 +29,6 @@ Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するた
   | ControlPlane#3 | k8s-cp03 | 192.168.13.23 |
   | WorkerNode#1 | k8s-worker01 | 192.168.13.24 |
   | WorkerNode#2 | k8s-worker02 | 192.168.13.25 |
-  | WorkerNode#3 | k8s-worker03 | 192.168.13.26 |
 
   ```bash
   # コマンド例
@@ -57,22 +56,41 @@ http_proxy="http://192.168.13.2:8080/"
 https_proxy="http://192.168.13.2:8080/"
 HTTP_PROXY="http://192.168.13.2:8080/"
 HTTPS_PROXY="http://192.168.13.2:8080/"
-no_proxy="localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com"
-NO_PROXY="localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com"
+no_proxy="localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
+NO_PROXY="localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
 ```
 
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
+- 192.168.13.0/24
+  - 構築しているサーバが接続されているローカルネットワークのネットワークアドレス
+- 192.168.13.19
+  - Kubernetes の API サーバとして指定する VIP
+- 192.168.13.21 〜 192.168.13.25
+  - ControlPlane#1-3, WorkerNode#1-2 の IP
 - vip-k8s-master.home.ndeguchi.com
-  - Kubernetes の API サーバとして指定するドメイン名を指定
+  - Kubernetes の API サーバとして指定するドメイン名
+
+## Firewall Stop
+
+実施対象サーバ：5台全て
+
+```bash
+systemctl status firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl status firewalld
+```
 
 ## Swap Off
 
 実施対象サーバ：5台全て
 
 ```bash
-sudo dnf remove -y zram-generator-defaults
-sudo swapoff -a
+dnf remove -y zram-generator-defaults
+swapon --show
+swapoff -a
+swapon --show
 ```
 
 ## Forwarding/Bridge 許可
@@ -114,9 +132,9 @@ env | grep -i proxy
 
 ```
 <出力例>
-no_proxy=localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com
+no_proxy=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
 https_proxy=http://192.168.13.2:8080/
-NO_PROXY=localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com
+NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
 HTTPS_PROXY=http://192.168.13.2:8080/
 HTTP_PROXY=http://192.168.13.2:8080/
 http_proxy=http://192.168.13.2:8080/
@@ -156,6 +174,11 @@ systemctl status docker
 docker ps
 ```
 
+```
+<出力例：以下が出力されることを確認>
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+```
+
 ## Docker の Proxy 設定
 
 実施対象サーバ：5台全て
@@ -170,11 +193,15 @@ vim /etc/systemd/system/docker.service.d/http-proxy.conf
 [Service]
 Environment="HTTP_PROXY=http://192.168.13.2:8080"
 Environment="HTTPS_PROXY=http://192.168.13.2:8080"
-Environment="NO_PROXY=localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com"
+Environment="NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
 ```
 
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
+- 192.168.13.19
+  - Kubernetes の API サーバとして指定する VIP
+- 192.168.13.21 〜 192.168.13.25
+  - ControlPlane#1-3, WorkerNode#1-2 の IP
 - vip-k8s-master.home.ndeguchi.com
   - Kubernetes の API サーバとして指定するドメイン名を指定
 
@@ -190,7 +217,7 @@ systemctl show --property=Environment docker
 
 ```
 <出力例>
-Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 NO_PROXY=localhost,192.168.13.0/24,vip-k8s-master.home.ndeguchi.com
+Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
 ```
 
 ```bash
@@ -396,6 +423,7 @@ frontend apiserver
     mode tcp
     option tcplog
     default_backend apiserver
+
 #---------------------------------------------------------------------
 # round robin balancing for apiserver
 #---------------------------------------------------------------------
@@ -447,21 +475,100 @@ ip a
 ```
 
 
-## HAProxy(LB) の設定・起動 - ControlPlane#2
+## HAProxy(LB) の設定 - ControlPlane#2
 
 実施対象サーバ：ControlPlane#2 のみで実施 **(注意)**
 
 ```bash
-FIXME: SCP で CP01 からファイルを取得して一部修正する手順を書く
+# ControlPlane#1 から keepalived.conf を取得する
+scp root@192.168.13.21:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
+
+# "state MASTER" を "state SLAVE" に変更する
+sed -i -e "s/state MASTER/state SLAVE/" /etc/keepalived/keepalived.conf
+
+# "priority 255" を "priority 254" に変更する
+sed -i -e "s/priority 255/priority 254/" /etc/keepalived/keepalived.conf
+
+diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 ```
 
-## HAProxy(LB) の設定・起動 - ControlPlane#3
+差分が以下のみであることを確認する。
+
+```
+<出力例>
+15c15
+<   state MASTER
+---
+>   state SLAVE
+18c18
+<   priority 255
+---
+>   priority 254
+```
+
+
+## HAProxy(LB) の設定 - ControlPlane#3
 
 実施対象サーバ：ControlPlane#3 のみで実施 **(注意)**
 
 ```bash
-FIXME: SCP で CP01 からファイルを取得して一部修正する手順を書く
+# ControlPlane#1 から keepalived.conf を取得する
+scp root@192.168.13.21:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
+
+# "state MASTER" を "state SLAVE" に変更する
+sed -i -e "s/state MASTER/state SLAVE/" /etc/keepalived/keepalived.conf
+
+# "priority 255" を "priority 253" に変更する
+sed -i -e "s/priority 255/priority 253/" /etc/keepalived/keepalived.conf
+
+diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 ```
+
+差分が以下のみであることを確認する。
+
+```
+<出力例>
+15c15
+<   state MASTER
+---
+>   state SLAVE
+18c18
+<   priority 255
+---
+>   priority 253
+```
+
+## HAProxy(LB) の設定・起動 - ControlPlane#2,3
+
+実施対象サーバ：ControlPlane#2,3 の2台のみで実施 **(注意)**
+
+```bash
+# ControlPlane#1 から check_apiserver.sh を取得し実行権限を付与する
+scp root@192.168.13.21:/etc/keepalived/check_apiserver.sh /etc/keepalived/check_apiserver.sh
+chmod +x /etc/keepalived/check_apiserver.sh
+ll  /etc/keepalived/check_apiserver.sh
+cat /etc/keepalived/check_apiserver.sh
+
+# ControlPlane#1 から haproxy.cfg を取得する
+cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg-org
+scp root@192.168.13.21:/etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg
+ll  /etc/haproxy/haproxy.cfg
+cat /etc/haproxy/haproxy.cfg
+
+# keepalivedとhaproxyを起動
+systemctl status keepalived
+systemctl start keepalived
+systemctl enable keepalived
+systemctl status keepalived
+
+systemctl status haproxy
+systemctl start haproxy
+systemctl enable haproxy
+systemctl status haproxy
+```
+
 
 ## Kubernetes クラスタの起動
 
@@ -494,9 +601,9 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 
 You can now join any number of the control-plane node running the following command on each as root:
 
-  kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token hlnwdd.ekfrwnf9f37htwmr \
-    --discovery-token-ca-cert-hash sha256:4bb9307b467ab7bf6ec039b1b4d4ec49ece598080b2979c4fb84e47c8f87cdc6 \
-    --control-plane --certificate-key c6586d3f6e170bf8951bf2670bf56e4a4177b1047c3d5e6076406ae2c7f7ed22
+  kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token ddtm5w.65snctg1tj0me580 \
+	--discovery-token-ca-cert-hash sha256:448418ca6997720fb3acf6d2862121e9aa7c17cac5cbdfeab663bbf4815f75be \
+	--control-plane --certificate-key e098a853a61277ed9b4dc27a0d3902d65eb4f8adb6fa32bee3053341e8987702
 
 Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
 As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use
@@ -504,7 +611,224 @@ As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you c
 
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token hlnwdd.ekfrwnf9f37htwmr \
-  --discovery-token-ca-cert-hash sha256:4bb9307b467ab7bf6ec039b1b4d4ec49ece598080b2979c4fb84e47c8f87cdc6
+kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token ddtm5w.65snctg1tj0me580 \
+	--discovery-token-ca-cert-hash sha256:448418ca6997720fb3acf6d2862121e9aa7c17cac5cbdfeab663bbf4815f75be
 ```
+
+上記で出力された以下コマンドは後の作業で使用するため控えておく。
+
+
+## ControlPlane 追加
+
+実施対象サーバ：ControlPlane#2,3 の2台のみで実施 **(注意)**
+
+上記、「Kubernetes クラスタの起動」で出力された control-plane node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
+
+```bash
+# コマンド例
+kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
+--discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
+--control-plane --certificate-key 4ef92e160ed8d207f43397611c54ad612c752efb6b699c1fc7d250c2ecfe912f \
+--cri-socket=unix:///var/run/cri-dockerd.sock --v 9
+```
+
+```
+<出力例>
+This node has joined the cluster and a new control plane instance was created:
+
+* Certificate signing request was sent to apiserver and approval was received.
+* The Kubelet was informed of the new secure connection details.
+* Control plane label and taint were applied to the new node.
+* The Kubernetes control plane instances scaled up.
+* A new etcd member was added to the local/stacked etcd cluster.
+
+To start administering your cluster from this node, you need to run the following as a regular user:
+
+	mkdir -p $HOME/.kube
+	sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Run 'kubectl get nodes' to see this node join the cluster.
+```
+
+## WorkerNode 追加
+
+実施対象サーバ：WorkerNode#1,2 の2台のみで実施 **(注意)**
+
+上記、「Kubernetes クラスタの起動」で出力された worker node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
+
+```bash
+kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
+  --discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
+  --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
+```
+
+```
+<出力例>
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+```
+
+## kubectl で接続
+
+実施対象サーバ：ControlPlane#1,2,3 の3台のみで実施 **(注意)**
+
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl get node
+```
+
+```
+<出力例：NotReadyだが問題なし>
+NAME       STATUS     ROLES           AGE   VERSION
+k8s-cp01   NotReady   control-plane   10h   v1.28.3
+```
+
+## CNI (Calico) インストール
+
+実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+
+```
+# Calico Operator をインストール
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml -O
+kubectl create -f custom-resources.yaml
+
+# Calico manifest をインストール
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml -O
+kubectl apply -f calico.yaml
+kubectl get pods -n kube-system
+```
+
+```
+<出力例：全ての Pod が Running であることを確認する。Pending や ContainerCreating が存在する場合は数十秒待ってから再実行する。>
+NAME                                       READY   STATUS    RESTARTS        AGE
+calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               5m47s
+calico-node-2bdtx                          1/1     Running   0               5m47s
+calico-node-2k7tr                          1/1     Running   0               5m47s
+calico-node-8lgmw                          1/1     Running   0               5m47s
+calico-node-ftmt6                          1/1     Running   0               5m47s
+calico-node-wpmzq                          1/1     Running   0               5m47s
+coredns-5dd5756b68-8n2ml                   1/1     Running   0               75m
+coredns-5dd5756b68-fhrmk                   1/1     Running   0               75m
+etcd-k8s-cp01                              1/1     Running   0               75m
+etcd-k8s-cp02                              1/1     Running   0               59m
+etcd-k8s-cp03                              1/1     Running   0               44m
+kube-apiserver-k8s-cp01                    1/1     Running   0               75m
+kube-apiserver-k8s-cp02                    1/1     Running   0               59m
+kube-apiserver-k8s-cp03                    1/1     Running   0               44m
+kube-controller-manager-k8s-cp01           1/1     Running   1 (59m ago)     75m
+kube-controller-manager-k8s-cp02           1/1     Running   1 (5m22s ago)   59m
+kube-controller-manager-k8s-cp03           1/1     Running   1 (4m6s ago)    44m
+kube-proxy-c4fm4                           1/1     Running   0               44m
+kube-proxy-f7747                           1/1     Running   0               8m31s
+kube-proxy-pdpbv                           1/1     Running   0               59m
+kube-proxy-vckfb                           1/1     Running   0               75m
+kube-proxy-z9k2q                           1/1     Running   0               7m39s
+kube-scheduler-k8s-cp01                    1/1     Running   2 (4m30s ago)   75m
+kube-scheduler-k8s-cp02                    1/1     Running   1 (5m20s ago)   59m
+kube-scheduler-k8s-cp03                    1/1     Running   0               44m
+```
+
+
+## Kubernetes 動作確認
+
+実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+
+Kubernetes クラスタが正常に動作していることを確認する。
+
+```bash
+kubectl get node
+```
+
+```
+<出力例：node の Status が READY であることを確認する>
+NAME           STATUS   ROLES           AGE     VERSION
+k8s-cp01       Ready    control-plane   76m     v1.28.3
+k8s-cp02       Ready    control-plane   60m     v1.28.3
+k8s-cp03       Ready    control-plane   45m     v1.28.3
+k8s-worker01   Ready    <none>          9m28s   v1.28.3
+k8s-worker02   Ready    <none>          8m37s   v1.28.3
+```
+
+```bash
+kubectl get pod -A
+```
+
+```
+<出力例：pod の Status が Running であることを確認する>
+NAMESPACE         NAME                                       READY   STATUS    RESTARTS        AGE
+kube-system       calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               10m
+kube-system       calico-node-2bdtx                          1/1     Running   0               10m
+kube-system       calico-node-2k7tr                          1/1     Running   0               10m
+kube-system       calico-node-8lgmw                          1/1     Running   0               10m
+kube-system       calico-node-ftmt6                          1/1     Running   0               10m
+kube-system       calico-node-wpmzq                          1/1     Running   0               10m
+kube-system       coredns-5dd5756b68-8n2ml                   1/1     Running   0               79m
+kube-system       coredns-5dd5756b68-fhrmk                   1/1     Running   0               79m
+kube-system       etcd-k8s-cp01                              1/1     Running   0               80m
+kube-system       etcd-k8s-cp02                              1/1     Running   0               64m
+kube-system       etcd-k8s-cp03                              1/1     Running   0               49m
+kube-system       kube-apiserver-k8s-cp01                    1/1     Running   0               80m
+kube-system       kube-apiserver-k8s-cp02                    1/1     Running   0               64m
+kube-system       kube-apiserver-k8s-cp03                    1/1     Running   0               49m
+kube-system       kube-controller-manager-k8s-cp01           1/1     Running   1 (64m ago)     80m
+kube-system       kube-controller-manager-k8s-cp02           1/1     Running   1 (10m ago)     64m
+kube-system       kube-controller-manager-k8s-cp03           1/1     Running   1 (8m48s ago)   49m
+kube-system       kube-proxy-c4fm4                           1/1     Running   0               49m
+kube-system       kube-proxy-f7747                           1/1     Running   0               13m
+kube-system       kube-proxy-pdpbv                           1/1     Running   0               64m
+kube-system       kube-proxy-vckfb                           1/1     Running   0               79m
+kube-system       kube-proxy-z9k2q                           1/1     Running   0               12m
+kube-system       kube-scheduler-k8s-cp01                    1/1     Running   2 (9m12s ago)   80m
+kube-system       kube-scheduler-k8s-cp02                    1/1     Running   1 (10m ago)     64m
+kube-system       kube-scheduler-k8s-cp03                    1/1     Running   0               49m
+tigera-operator   tigera-operator-94d7f7696-99xml            1/1     Running   2 (9m20s ago)   10m
+```
+
+
+## MetalLB のインストール
+
+実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+
+
+```bash
+kubectl get configmap kube-proxy -n kube-system -o yaml
+
+kubectl get configmap kube-proxy -n kube-system -o yaml | \
+  sed -e "s/strictARP: false/strictARP: true/" | \
+  kubectl apply -f - -n kube-system
+
+kubectl get configmap kube-proxy -n kube-system -o yaml
+
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+
+# IP Pool を作成する
+cd
+vim ip-pool.yaml
+```
+
+```
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.13.210-192.168.13.254
+```
+
+- 192.168.13.210-192.168.13.254
+  - MetalLB (Load Balancer) で払い出すアドレスレンジを指定
+
+```bash
+kubectl apply -f ip-pool.yaml
+```
+
 
