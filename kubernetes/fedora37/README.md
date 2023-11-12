@@ -24,18 +24,18 @@ Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するた
 
   | \# | ホスト名 | IPアドレス |
   | :---: | :---: | :---: |
-  | ControlPlane#1 | k8s-cp01 | 192.168.13.21 |
-  | ControlPlane#2 | k8s-cp02 | 192.168.13.22 |
-  | ControlPlane#3 | k8s-cp03 | 192.168.13.23 |
-  | WorkerNode#1 | k8s-worker01 | 192.168.13.24 |
-  | WorkerNode#2 | k8s-worker02 | 192.168.13.25 |
+  | ControlPlane#1 | k8s-cp01 | 192.168.14.11 |
+  | ControlPlane#2 | k8s-cp02 | 192.168.14.12 |
+  | ControlPlane#3 | k8s-cp03 | 192.168.14.13 |
+  | WorkerNode#1 | k8s-worker01 | 192.168.14.21 |
+  | WorkerNode#2 | k8s-worker02 | 192.168.14.22 |
 
   ```bash
   # コマンド例
   hostnamectl set-hostname k8s-cp01
   ip a
-  nmcli connection modify ens192 ipv4.addresses 192.168.13.21/24
-  nmcli connection modify ens192 ipv4.gateway 192.168.13.1
+  nmcli connection modify ens192 ipv4.addresses 192.168.14.11/24
+  nmcli connection modify ens192 ipv4.gateway 192.168.14.1
   nmcli connection modify ens192 ipv4.dns 192.168.13.2
   nmcli connection modify ens192 ipv4.method manual
   nmcli connection down ens192
@@ -48,35 +48,68 @@ Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するた
 実施対象サーバ：5台全て
 
 ```bash
+# vim /root/.bashrc
 vim /etc/environment
 ```
 
-```
-http_proxy="http://192.168.13.2:8080/"
-https_proxy="http://192.168.13.2:8080/"
-HTTP_PROXY="http://192.168.13.2:8080/"
-HTTPS_PROXY="http://192.168.13.2:8080/"
-no_proxy="localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
-NO_PROXY="localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
+以下を末尾に追記
+
+```text
+export http_proxy=http://192.168.13.2:8080/
+export HTTP_PROXY=http://192.168.13.2:8080/
+
+export https_proxy=http://192.168.13.2:8080/
+export HTTPS_PROXY=http://192.168.13.2:8080/
+
+export no_proxy=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
+export NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
 ```
 
+<!--
+FIXME
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
 - 192.168.13.0/24
   - 構築しているサーバが接続されているローカルネットワークのネットワークアドレス
 - 192.168.13.19
   - Kubernetes の API サーバとして指定する VIP
-- 192.168.13.21 〜 192.168.13.25
+- 192.168.14.11 〜 192.168.14.22
   - ControlPlane#1-3, WorkerNode#1-2 の IP
 - vip-k8s-master.home.ndeguchi.com
   - Kubernetes の API サーバとして指定するドメイン名
+-->
+
+```bash
+# source /root/.bashrc
+source /etc/environment
+
+curl http://www.google.com
+curl https://www.google.com
+```
+
+
+## (OPTIONAL)tmux,bashrc,vim
+
+```bash
+dnf install -y tmux
+
+curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/tmux/.tmux.conf
+
+curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/vim/.vimrc
+
+cat <<EOF >> ~/.bashrc
+alias k=kubectl
+set -o vi
+EOF
+
+systemctl disable dnf-makecache.timer
+```
 
 ## Firewall Stop
 
 実施対象サーバ：5台全て
 
 ```bash
-systemctl status firewalld
 systemctl stop firewalld
 systemctl disable firewalld
 systemctl status firewalld
@@ -88,7 +121,6 @@ systemctl status firewalld
 
 ```bash
 dnf remove -y zram-generator-defaults
-swapon --show
 swapoff -a
 swapon --show
 ```
@@ -127,17 +159,14 @@ shutdown -r now
 実施対象サーバ：5台全て
 
 ```bash
-env | grep -i proxy
+env | grep -i proxy | sort
 ```
 
 ```
 <出力例>
-no_proxy=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
-https_proxy=http://192.168.13.2:8080/
-NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
+NO_PROXY=localhost,127.0.0.1,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master
 HTTPS_PROXY=http://192.168.13.2:8080/
 HTTP_PROXY=http://192.168.13.2:8080/
-http_proxy=http://192.168.13.2:8080/
 ```
 
 ```
@@ -171,13 +200,23 @@ dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker
 systemctl start docker
 systemctl enable docker
 systemctl status docker 
-docker ps
+docker run --rm hello-world
 ```
 
+docker に proxy の設定をまだ行っていないため、失敗することを確認する。
+
 ```
-<出力例：以下が出力されることを確認>
-CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+<出力例：以下エラーが出力されることを確認>
+Unable to find image 'hello-world:latest' locally
+docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp 3.216.34.172:443: connect: network is unreachable.
+See 'docker run --help'.
 ```
+
+> ## dockerhub のアカウント作成
+> 
+> - dockerhubのアカウントを作成する。既にアカウントを持っている場合は不要
+> - AccessToken を作成する
+
 
 ## Docker の Proxy 設定
 
@@ -193,17 +232,20 @@ vim /etc/systemd/system/docker.service.d/http-proxy.conf
 [Service]
 Environment="HTTP_PROXY=http://192.168.13.2:8080"
 Environment="HTTPS_PROXY=http://192.168.13.2:8080"
-Environment="NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com"
+Environment="NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc"
 ```
 
+<!--
+FIXME
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
 - 192.168.13.19
   - Kubernetes の API サーバとして指定する VIP
-- 192.168.13.21 〜 192.168.13.25
+- 192.168.14.11 〜 192.168.14.22
   - ControlPlane#1-3, WorkerNode#1-2 の IP
 - vip-k8s-master.home.ndeguchi.com
   - Kubernetes の API サーバとして指定するドメイン名を指定
+-->
 
 ```bash
 # 反映
@@ -215,9 +257,9 @@ systemctl status docker
 systemctl show --property=Environment docker
 ```
 
-```
+```text
 <出力例>
-Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 NO_PROXY=localhost,192.168.13.0/24,192.168.13.19,192.168.13.21,192.168.13.22,192.168.13.23,192.168.13.24,192.168.13.25,vip-k8s-master.home.ndeguchi.com
+Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 NO_PROXY=localhost,127.0.0.1,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16
 ```
 
 ```bash
@@ -225,7 +267,9 @@ Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:
 docker run --rm hello-world
 ```
 
-```
+proxy の設定を行ったことによりインターネットからコンテナイメージを取得出来るようになり正常に実行できることを確認する。
+
+```text
 <出力例>
 Unable to find image 'hello-world:latest' locally
 latest: Pulling from library/hello-world
@@ -255,6 +299,7 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 
+
 ## cri-dockerd のインストール
 
 実施対象サーバ：5台全て
@@ -267,7 +312,7 @@ dnf install -y git make go
 git config --global http.proxy http://192.168.13.2:8080
 
 # cri-dockerd をダウンロード
-git clone https://github.com/Mirantis/cri-dockerd.git
+cd ; git clone https://github.com/Mirantis/cri-dockerd.git
 
 # cri-dockerd をビルド
 cd cri-dockerd
@@ -302,30 +347,45 @@ EOF
 
 cat /etc/yum.repos.d/kubernetes.repo
 
-# Selinux を permissive モードに変更する
-getenforce
-setenforce 0
-getenforce
-
+# Selinux を無効化
 cat /etc/selinux/config
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 cat /etc/selinux/config
+setenforce 0
+getenforce
+# Permissive であることを確認する
 
 # Kubeadm、kubectl、kubeletをインストール
 dnf install -y kubelet kubeadm kubectl
-systemctl status kubelet
 systemctl start kubelet
 systemctl enable kubelet
 systemctl status kubelet
-# 起動しておらず code=exited, status=1/FAILURE のエラーが出力されているが問題無し。
+# 起動に失敗し code=exited, status=1/FAILURE のエラーが出力されているが現時点では問題無し。
 ```
 
-## DNS登録
+> ## DNS登録
+> 
+> - API サーバとして使用するドメイン名とVIPをDNSサーバに登録する。本手順では以下を設定するものとして手順を記載する。
+>   | ドメイン名 | IPアドレス |
+>   | --- | --- |
+>   | vip-k8s-master.home.ndeguchi.com | 192.168.14.10 |
 
-- API サーバとして使用するドメイン名とVIPをDNSサーバに登録する。本手順では以下を設定するものとして手順を記載する。
-  | ドメイン名 | IPアドレス |
-  | --- | --- |
-  | vip-k8s-master.home.ndeguchi.com | 192.168.13.19 |
+
+# /ets/hosts 登録
+
+実施対象サーバ：5台全て
+
+```bash
+cat <<EOF >> /etc/hosts
+192.168.14.10 vip-k8s-master
+EOF
+
+
+cat <<EOF >> /etc/hosts
+192.168.11.60 vip-k8s-master
+EOF
+
+```
 
 
 ## HAProxy(LB) のインストール
@@ -346,7 +406,7 @@ vim /etc/keepalived/check_apiserver.sh
 
 ```bash
 #!/bin/sh
-APISERVER_VIP=192.168.13.19
+APISERVER_VIP=192.168.14.10
 APISERVER_DEST_PORT=6443
 errorExit() {
   echo "*** $*" 1>&2
@@ -358,7 +418,7 @@ if ip addr | grep -q ${APISERVER_VIP}; then
 fi
 ```
 
-- 192.168.13.19
+- 192.168.14.10
   - API サーバの VIP を指定
 
 ```bash
@@ -371,7 +431,7 @@ sh -c '> /etc/keepalived/keepalived.conf'
 vim /etc/keepalived/keepalived.conf
 ```
 
-```
+```text
 ! /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 global_defs {
@@ -395,7 +455,7 @@ vrrp_instance VI_1 {
     auth_pass P@##D321!
   }
   virtual_ipaddress {
-    192.168.13.19/24
+    192.168.14.10/24
   }
   track_script {
     check_apiserver
@@ -403,7 +463,7 @@ vrrp_instance VI_1 {
 }
 ```
 
-- 192.168.13.19/24
+- 192.168.14.10/24
   - API サーバの VIP/Mask を指定
 
 ```bash
@@ -414,7 +474,7 @@ vim /etc/haproxy/haproxy.cfg
 
 defaults セクションの1つしたのセクション以降を全て削除し、以下の内容を追記する
 
-```
+```text
 #---------------------------------------------------------------------
 # apiserver frontend which proxys to the masters
 #---------------------------------------------------------------------
@@ -433,12 +493,12 @@ backend apiserver
     mode tcp
     option ssl-hello-chk
     balance roundrobin
-    server k8s-cp01 192.168.13.21:6443 check
-    server k8s-cp02 192.168.13.22:6443 check
-    server k8s-cp03 192.168.13.23:6443 check
+        server k8s-cp01 192.168.14.11:6443 check
+        server k8s-cp02 192.168.14.12:6443 check
+        server k8s-cp03 192.168.14.13:6443 check
 ```
 
-- 192.168.13.21 〜 192.168.13.23
+- 192.168.14.11 〜 192.168.14.13
   - ControlPlane#1-3 の IP アドレスを指定
 
 
@@ -449,12 +509,10 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 #    WARNING が出力されるが問題なし。
 
 # keepalivedとhaproxyを起動
-systemctl status keepalived
 systemctl start keepalived
 systemctl enable keepalived
 systemctl status keepalived
 
-systemctl status haproxy
 systemctl start haproxy
 systemctl enable haproxy
 systemctl status haproxy
@@ -463,12 +521,12 @@ systemctl status haproxy
 ip a
 ```
 
-```
+```test
 <出力例>
 2: ens192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
     link/ether 00:50:56:95:1b:e6 brd ff:ff:ff:ff:ff:ff
     altname enp11s0
-    inet 192.168.13.21/24 brd 192.168.13.255 scope global noprefixroute ens192 ←ControlPlane#1 のIP★
+    inet 192.168.14.11/24 brd 192.168.14.225 scope global noprefixroute ens192 ←ControlPlane#1 のIP★
        valid_lft forever preferred_lft forever
     inet 192.168.13.19/24 scope global secondary ens192 ←VIP★
        valid_lft forever preferred_lft forever
@@ -481,7 +539,7 @@ ip a
 
 ```bash
 # ControlPlane#1 から keepalived.conf を取得する
-scp root@192.168.13.21:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+scp root@192.168.14.11:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
 cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
 
 # "state MASTER" を "state SLAVE" に変更する
@@ -495,7 +553,7 @@ diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 
 差分が以下のみであることを確認する。
 
-```
+```text
 <出力例>
 15c15
 <   state MASTER
@@ -514,7 +572,7 @@ diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 
 ```bash
 # ControlPlane#1 から keepalived.conf を取得する
-scp root@192.168.13.21:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+scp root@192.168.14.11:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
 cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
 
 # "state MASTER" を "state SLAVE" に変更する
@@ -528,7 +586,7 @@ diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 
 差分が以下のみであることを確認する。
 
-```
+```text
 <出力例>
 15c15
 <   state MASTER
@@ -546,14 +604,14 @@ diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
 
 ```bash
 # ControlPlane#1 から check_apiserver.sh を取得し実行権限を付与する
-scp root@192.168.13.21:/etc/keepalived/check_apiserver.sh /etc/keepalived/check_apiserver.sh
+scp root@192.168.14.11:/etc/keepalived/check_apiserver.sh /etc/keepalived/check_apiserver.sh
 chmod +x /etc/keepalived/check_apiserver.sh
 ll  /etc/keepalived/check_apiserver.sh
 cat /etc/keepalived/check_apiserver.sh
 
 # ControlPlane#1 から haproxy.cfg を取得する
 cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg-org
-scp root@192.168.13.21:/etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg
+scp root@192.168.14.11:/etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg
 ll  /etc/haproxy/haproxy.cfg
 cat /etc/haproxy/haproxy.cfg
 
@@ -574,14 +632,21 @@ systemctl status haproxy
 
 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
 
-```
+
+FIXME: /etc/hostsでいけるか検証中
+```bash
+kubeadm init --control-plane-endpoint "vip-k8s-master:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 kubeadm init --control-plane-endpoint "vip-k8s-master.home.ndeguchi.com:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
+kubeadm init --control-plane-endpoint "192.168.14.10:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 ```
 
+<!--
+FIXME
 - vip-k8s-master.home.ndeguchi.com
   - API サーバのドメイン名を指定
+-->
 
-```
+```text
 <出力例: 上記コマンドの実行に成功すると、標準出力の末尾に以下と同様の情報が出力される>
 Your Kubernetes control-plane has initialized successfully!
 
@@ -601,9 +666,9 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 
 You can now join any number of the control-plane node running the following command on each as root:
 
-  kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token ddtm5w.65snctg1tj0me580 \
-	--discovery-token-ca-cert-hash sha256:448418ca6997720fb3acf6d2862121e9aa7c17cac5cbdfeab663bbf4815f75be \
-	--control-plane --certificate-key e098a853a61277ed9b4dc27a0d3902d65eb4f8adb6fa32bee3053341e8987702
+  kubeadm join vip-k8s-master:8443 --token gh18ai.zthihrittaxna868 \
+        --discovery-token-ca-cert-hash sha256:c2f7b7eb91ab77bab16210ae1a3974b783f079c9f0c468e377636f0defe64ed7 \
+        --control-plane --certificate-key 7b56fa1584cc5408dc44f8643dedd2d2250499d02507327c364ad7bfb3671747
 
 Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
 As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use
@@ -611,8 +676,8 @@ As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you c
 
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token ddtm5w.65snctg1tj0me580 \
-	--discovery-token-ca-cert-hash sha256:448418ca6997720fb3acf6d2862121e9aa7c17cac5cbdfeab663bbf4815f75be
+kubeadm join vip-k8s-master:8443 --token gh18ai.zthihrittaxna868 \
+        --discovery-token-ca-cert-hash sha256:c2f7b7eb91ab77bab16210ae1a3974b783f079c9f0c468e377636f0defe64ed7
 ```
 
 上記で出力された以下コマンドは後の作業で使用するため控えておく。
@@ -632,7 +697,7 @@ kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7
 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 ```
 
-```
+```text
 <出力例>
 This node has joined the cluster and a new control plane instance was created:
 
@@ -663,7 +728,7 @@ kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7
   --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 ```
 
-```
+```text
 <出力例>
 This node has joined the cluster:
 * Certificate signing request was sent to apiserver and a response was received.
@@ -683,7 +748,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl get node
 ```
 
-```
+```text
 <出力例：NotReadyだが問題なし>
 NAME       STATUS     ROLES           AGE   VERSION
 k8s-cp01   NotReady   control-plane   10h   v1.28.3
@@ -693,19 +758,147 @@ k8s-cp01   NotReady   control-plane   10h   v1.28.3
 
 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
 
-```
-# Calico Operator をインストール
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
-curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml -O
-kubectl create -f custom-resources.yaml
 
-# Calico manifest をインストール
-curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml -O
+```bash
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/tigera-operator.yaml
+curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
+cp -p custom-resources.yaml custom-resources.yaml.bak
+vim custom-resources.yaml
+diff -u custom-resources.yaml.bak custom-resources.yaml
+```
+```text
+--- custom-resources.yaml.bak   2023-11-12 14:43:06.419699932 +0900
++++ custom-resources.yaml       2023-11-12 14:43:52.123696933 +0900
+@@ -10,7 +10,7 @@
+     # Note: The ipPools section cannot be modified post-install.
+     ipPools:
+     - blockSize: 26
+-      cidr: 192.168.0.0/16
++      cidr: 10.20.0.0/16
+       encapsulation: VXLANCrossSubnet
+       natOutgoing: Enabled
+       nodeSelector: all()
+```
+
+```bash
+kubectl create -f custom-resources.yaml
+watch kubectl get pods -n calico-system
+```
+
+```text
+NAME                                       READY   STATUS    RESTARTS   AGE
+calico-kube-controllers-779cc75df9-9xdsv   1/1     Running   0          75s
+calico-node-jnt82                          1/1     Running   0          76s
+calico-node-l62kb                          1/1     Running   0          76s
+calico-typha-65589bbc75-28gmd              1/1     Running   0          76s
+csi-node-driver-hcwm8                      2/2     Running   0          76s
+csi-node-driver-vxb6l                      2/2     Running   0          76s
+```
+
+<hr>
+
+
+```bash
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/calico.yaml -O
+cp -p calico.yaml calico.yaml.org
+vim calico.yaml
+diff -u calico.yaml.org calico.yaml
+  | --- calico.yaml.org	2023-11-12 05:45:51.689718010 +0900
+  | +++ calico.yaml	2023-11-12 05:46:56.248715015 +0900
+  | @@ -4797,8 +4797,8 @@
+  |              # The default IPv4 pool to create on startup if none exists. Pod IPs will be
+  |              # chosen from this range. Changing this value after installation will have
+  |              # no effect. This should fall within `--cluster-cidr`.
+  | -            # - name: CALICO_IPV4POOL_CIDR
+  | -            #   value: "192.168.0.0/16"
+  | +            - name: CALICO_IPV4POOL_CIDR
+  | +              value: "10.20.0.0/16"
+  |              # Disable file logging so `kubectl logs` works.
+  |              - name: CALICO_DISABLE_FILE_LOGGING
+  |                value: "true"
+kubectl apply -f calico.yaml
+k get pod -A
+```
+
+
+
+
+```bash
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/tigera-operator.yaml
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml -O
+cp custom-resources.yaml custom-resources.yaml.org
+vim custom-resources.yaml.org
+```
+
+```text
+--- custom-resources.yaml.org	2023-11-12 05:23:02.339938360 +0900
++++ custom-resources.yaml	2023-11-12 05:23:26.910937220 +0900
+@@ -10,7 +10,7 @@
+     # Note: The ipPools section cannot be modified post-install.
+     ipPools:
+     - blockSize: 26
+-      cidr: 192.168.0.0/16
++      cidr: 10.20.0.0/16
+       encapsulation: VXLANCrossSubnet
+       natOutgoing: Enabled
+       nodeSelector: all()
+```
+
+```bash
+kubectl create -f custom-resources.yaml
+watch kubectl get pods -n calico-system
+```
+
+```text
+NAME                                       READY   STATUS    RESTARTS   AGE
+calico-kube-controllers-7b55dc5b57-hm8rq   1/1     Running   0          2m32s
+calico-node-mt7xn                          1/1     Running   0          2m32s
+calico-node-tjrx7                          1/1     Running   0          2m32s
+calico-typha-f55bd8c8-wbs7m                1/1     Running   0          2m32s
+csi-node-driver-lsbkn                      2/2     Running   0          2m32s
+csi-node-driver-r89gp                      2/2     Running   0          2m32s
+```
+
+
+```bash
+# Calico Operator をインストール
+# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
+# 
+# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
+# 
+# 
+# cd ; curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml -O
+# kubectl create -f custom-resources.yaml
+# 
+# # Calico manifest をインストール
+# curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml -O
+# 
+# cp calico.yaml calico.yaml.org
+# vim calico.yaml
+```
+
+```
+--- calico.yaml.org     2023-11-12 03:47:11.674988099 +0900
++++ calico.yaml 2023-11-12 03:51:17.325976705 +0900
+@@ -4797,8 +4797,8 @@
+             # The default IPv4 pool to create on startup if none exists. Pod IPs will be
+             # chosen from this range. Changing this value after installation will have
+             # no effect. This should fall within `--cluster-cidr`.
+-            # - name: CALICO_IPV4POOL_CIDR
+-            #   value: "192.168.0.0/16"
++            - name: CALICO_IPV4POOL_CIDR
++              value: "10.20.0.0/16"
+             # Disable file logging so `kubectl logs` works.
+             - name: CALICO_DISABLE_FILE_LOGGING
+               value: "true"
+```
+
+```bash
 kubectl apply -f calico.yaml
 kubectl get pods -n kube-system
 ```
 
-```
+```text
 <出力例：全ての Pod が Running であることを確認する。Pending や ContainerCreating が存在する場合は数十秒待ってから再実行する。>
 NAME                                       READY   STATUS    RESTARTS        AGE
 calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               5m47s
@@ -736,7 +929,7 @@ kube-scheduler-k8s-cp03                    1/1     Running   0               44m
 ```
 
 
-## Kubernetes 動作確認
+## Kubernetes 正常性確認
 
 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
 
@@ -746,7 +939,7 @@ Kubernetes クラスタが正常に動作していることを確認する。
 kubectl get node
 ```
 
-```
+```text
 <出力例：node の Status が READY であることを確認する>
 NAME           STATUS   ROLES           AGE     VERSION
 k8s-cp01       Ready    control-plane   76m     v1.28.3
@@ -760,7 +953,7 @@ k8s-worker02   Ready    <none>          8m37s   v1.28.3
 kubectl get pod -A
 ```
 
-```
+```text
 <出力例：pod の Status が Running であることを確認する>
 NAMESPACE         NAME                                       READY   STATUS    RESTARTS        AGE
 kube-system       calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               10m
@@ -800,14 +993,35 @@ tigera-operator   tigera-operator-94d7f7696-99xml            1/1     Running   2
 ```bash
 kubectl get configmap kube-proxy -n kube-system -o yaml
 
+# see what changes would be made, returns nonzero returncode if different
+kubectl get configmap kube-proxy -n kube-system -o yaml | \
+  sed -e "s/strictARP: false/strictARP: true/" | \
+  kubectl diff -f - -n kube-system
+
+# actually apply the changes, returns nonzero returncode on errors only
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
   sed -e "s/strictARP: false/strictARP: true/" | \
   kubectl apply -f - -n kube-system
+# worning が出力されるが問題無し。"configmap/kube-proxy configured" が出力されること。
 
 kubectl get configmap kube-proxy -n kube-system -o yaml
 
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+watch kubectl get pod -n metallb-system
+```
 
+```
+<出力例: 全ての Pod が Running であることを確認する。>
+NAME                          READY   STATUS    RESTARTS   AGE
+controller-786f9df989-kfz9k   1/1     Running   0          76s
+speaker-54hlx                 1/1     Running   0          76s
+speaker-rmkvs                 1/1     Running   0          76s
+speaker-tlbq8                 1/1     Running   0          76s
+speaker-tswjs                 1/1     Running   0          76s
+speaker-vj84n                 1/1     Running   0          76s
+```
+
+```bash
 # IP Pool を作成する
 cd
 vim ip-pool.yaml
@@ -821,14 +1035,28 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-  - 192.168.13.210-192.168.13.254
+  - 192.168.14.200-192.168.14.224
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: example
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool
 ```
 
-- 192.168.13.210-192.168.13.254
+- 192.168.14.110-192.168.14.224
   - MetalLB (Load Balancer) で払い出すアドレスレンジを指定
 
 ```bash
 kubectl apply -f ip-pool.yaml
 ```
 
+```bash
+k create deployment nginx-dep --image=nginx --replicas=2
+k expose deployment/nginx-dep --type="LoadBalancer" --port 80
+k get svc
+```
 
