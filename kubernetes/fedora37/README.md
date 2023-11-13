@@ -871,12 +871,12 @@ kubectl get node
 
 ```text
 <出力例：node の Status が READY であることを確認する>
-NAME           STATUS   ROLES           AGE     VERSION
-k8s-cp01       Ready    control-plane   76m     v1.28.3
-k8s-cp02       Ready    control-plane   60m     v1.28.3
-k8s-cp03       Ready    control-plane   45m     v1.28.3
-k8s-worker01   Ready    <none>          9m28s   v1.28.3
-k8s-worker02   Ready    <none>          8m37s   v1.28.3
+NAME           STATUS   ROLES           AGE   VERSION
+k8s-cp01       Ready    control-plane   47m   v1.28.3
+k8s-cp02       Ready    control-plane   46m   v1.28.3
+k8s-cp03       Ready    control-plane   45m   v1.28.3
+k8s-worker01   Ready    <none>          44m   v1.28.3
+k8s-worker02   Ready    <none>          44m   v1.28.3
 ```
 
 ```bash
@@ -884,7 +884,7 @@ kubectl get pod -A
 ```
 
 ```text
-<出力例：pod の Status が Running であることを確認する>
+<出力例：全てのPodが "1/1 Running" または "2/2 Running" であることを確認する>
 NAMESPACE         NAME                                       READY   STATUS    RESTARTS        AGE
 kube-system       calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               10m
 kube-system       calico-node-2bdtx                          1/1     Running   0               10m
@@ -926,15 +926,33 @@ kubectl get configmap kube-proxy -n kube-system -o yaml
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
   sed -e "s/strictARP: false/strictARP: true/" | \
   kubectl diff -f - -n kube-system
+```
 
+```text
+<出力例：以下の通り strictARP の false / true のみが差分であることを確認する>
+--- /tmp/LIVE-2182416446/v1.ConfigMap.kube-system.kube-proxy    2023-11-13 13:30:37.101848994 +0900
++++ /tmp/MERGED-1824417285/v1.ConfigMap.kube-system.kube-proxy  2023-11-13 13:30:37.102848994 +0900
+@@ -34,7 +34,7 @@
+       excludeCIDRs: null
+       minSyncPeriod: 0s
+       scheduler: ""
+-      strictARP: false
++      strictARP: true
+       syncPeriod: 0s
+       tcpFinTimeout: 0s
+       tcpTimeout: 0s
+```
+
+```bash
 # actually apply the changes, returns nonzero returncode on errors only
 kubectl get configmap kube-proxy -n kube-system -o yaml | \
   sed -e "s/strictARP: false/strictARP: true/" | \
   kubectl apply -f - -n kube-system
-# worning が出力されるが問題無し。"configmap/kube-proxy configured" が出力されること。
+# worning が出力されるが問題無し。末尾に "configmap/kube-proxy configured" が出力されること。
 
 kubectl get configmap kube-proxy -n kube-system -o yaml
 
+# MetalLB をインストール
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
 watch kubectl get pod -n metallb-system
 ```
@@ -942,12 +960,12 @@ watch kubectl get pod -n metallb-system
 ```
 <出力例: 全ての Pod が 1/1 Running になるまで待機する。>
 NAME                          READY   STATUS    RESTARTS   AGE
-controller-786f9df989-kfz9k   1/1     Running   0          76s
-speaker-54hlx                 1/1     Running   0          76s
-speaker-rmkvs                 1/1     Running   0          76s
-speaker-tlbq8                 1/1     Running   0          76s
-speaker-tswjs                 1/1     Running   0          76s
-speaker-vj84n                 1/1     Running   0          76s
+controller-786f9df989-9c4rz   1/1     Running   0          39s
+speaker-5m8zs                 1/1     Running   0          39s
+speaker-5rdz6                 1/1     Running   0          39s
+speaker-p7h9w                 1/1     Running   0          39s
+speaker-r4wxk                 1/1     Running   0          39s
+speaker-szz74                 1/1     Running   0          39s
 ```
 
 ```bash
@@ -983,9 +1001,99 @@ spec:
 kubectl apply -f ip-pool.yaml
 ```
 
+## Kubernetes 動作確認
+
+実施対象サーバ：管理クライアント **(注意)**
+
 ```bash
-k create deployment nginx-dep --image=nginx --replicas=2
-k expose deployment/nginx-dep --type="LoadBalancer" --port 80
-k get svc
+# nginx 実行
+kubectl create deployment nginx --image=nginx --replicas=1
+kubectl get pod
 ```
+
+```text
+<出力例>
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-7854ff8877-lcl24   1/1     Running   0          16s
+```
+
+```bash
+# LoadBalancer 作成
+kubectl expose deployment/nginx --type="LoadBalancer" --port 80
+kubectl get svc
+```
+
+```text
+<出力例>
+NAME         TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE
+kubernetes   ClusterIP      10.96.0.1        <none>           443/TCP        65m
+nginx        LoadBalancer   10.103.163.113   192.168.14.200   80:32208/TCP   5s
+```
+
+上記コマンドの出力結果より `nginx` の `EXTERNAL-IP` を確認し、以下の通り curl コマンドで取得する。（上記の例では `192.168.14.200` )
+
+```bash
+# CLI からアクセス確認
+curl -v --noproxy "*" http://192.168.14.200
+```
+
+以下のように "Welcome to nginx!" が取得できることを確認する。
+
+```
+*   Trying 192.168.14.200:80...
+* Connected to 192.168.14.200 (192.168.14.200) port 80 (#0)
+> GET / HTTP/1.1
+> Host: 192.168.14.200
+> User-Agent: curl/7.85.0
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Server: nginx/1.25.3
+< Date: Mon, 13 Nov 2023 05:05:01 GMT
+< Content-Type: text/html
+< Content-Length: 615
+< Last-Modified: Tue, 24 Oct 2023 13:46:47 GMT
+< Connection: keep-alive
+< ETag: "6537cac7-267"
+< Accept-Ranges: bytes
+<
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+* Connection #0 to host 192.168.14.200 left intact
+```
+
+### GUIから画面確認
+
+管理クライアントの GUI からも nginx にアクセスできることを確認する。
+
+- Firefoxを開き proxy を設定する
+  - HTTPプロキシー: 192.168.13.2/8080
+  - このプロキシーを HTTPS でも使用する にチェック
+  - プロキシーなしで接続: 192.168.14.0/24
+  - ![img](img/20_Firefox_Proxy.png)
+
+- Firefox で上記で確認した nginx の EXTERNAL-IP にアクセスし nginx の画面を表示できることを確認する。
+  - ![img](img/21_Firefox_nginx.png)
 
