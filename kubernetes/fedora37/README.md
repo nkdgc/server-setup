@@ -67,9 +67,9 @@ export NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,19
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
 - 192.168.14.10
-  - Kubernetes の API サーバとして指定する IP アドレス
+  - Kubernetes の API サーバとして指定する IP アドレスを指定
 - 192.168.14.11,12,13,21,22
-  - ControlPlane#1-3, WorkerNode#1-2 の IP アドレス
+  - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
   
 ```bash
 source /etc/environment
@@ -79,7 +79,7 @@ source /etc/environment
 
 実施対象サーバ：6台全て
 
-好みの設定なので入れても入れなくても問題無し。
+好みの設定なので実施しなくても問題無し。
 
 ```bash
 # tmux インストール
@@ -380,6 +380,9 @@ EOF
 
 cat /etc/hosts
 ```
+
+- 192.168.14.10
+  - Kubernetes の API サーバとして指定する IP アドレスを指定
 
 ## HAProxy(LB) のインストール
 
