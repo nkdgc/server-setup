@@ -1,18 +1,17 @@
 # Fedora37 + Kubernetes + Proxy
 
 Proxy経由でインターネット疎通できる Fedora37 の上に kubeadm で Kubernetes を構築する。 \
-Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するため、適宜読み替えて実施。
+Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するため、適宜読み替えて実施すること。
 
 ## Fedora 構築
 
-- 以下の構成で Fedora を 5 台構築する。（ControlPlane: 3台, WorkerNode: 2台）
+- 以下の構成で Fedora を 6 台構築する。（ControlPlane: 3台, WorkerNode: 2台, 管理クライアント: 1台）
   - 仮想マシンスペック
     - CPU: 2 core
     - Mem: 4 GB
     - Disk: 80 GB
   - インストールメディア
     - Fedora-Server-dvd-x86_64-37-1.7.iso
-
 
 - インストール時に以下を有効化する
   - root アカウントを有効化
@@ -29,6 +28,7 @@ Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するた
   | ControlPlane#3 | k8s-cp03 | 192.168.14.13 |
   | WorkerNode#1 | k8s-worker01 | 192.168.14.21 |
   | WorkerNode#2 | k8s-worker02 | 192.168.14.22 |
+  | 管理クライアント | k8s-management | 192.168.14.30 |
 
   ```bash
   # コマンド例
@@ -45,10 +45,9 @@ Proxyサーバは `192.168.13.2:8080` である前提で手順を記載するた
 
 ## Fedora の Proxy 設定
 
-実施対象サーバ：5台全て
+実施対象サーバ：6台全て
 
 ```bash
-# vim /root/.bashrc
 vim /etc/environment
 ```
 
@@ -80,54 +79,54 @@ FIXME
 -->
 
 ```bash
-# source /root/.bashrc
 source /etc/environment
-
-curl http://www.google.com
-curl https://www.google.com
 ```
 
-
-## (OPTIONAL)tmux,bashrc,vim
+## (OPTIONAL) tmux,vim,bash,dnf-cache
 
 ```bash
+# tmux インストール
 dnf install -y tmux
-
 curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/tmux/.tmux.conf
 
+# .vimrc 取得
 curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/vim/.vimrc
 
+# .bashrc 追記
 cat <<EOF >> ~/.bashrc
 alias k=kubectl
 set -o vi
 EOF
 
+# dnfリポジトリキャッシュ更新無効化
 systemctl disable dnf-makecache.timer
 ```
 
 ## Firewall Stop
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 systemctl stop firewalld
 systemctl disable firewalld
 systemctl status firewalld
+# "Active: inactive (dead)" であることを確認する
 ```
 
 ## Swap Off
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 dnf remove -y zram-generator-defaults
 swapoff -a
 swapon --show
+# 何も出力されないことを確認する
 ```
 
 ## Forwarding/Bridge 許可
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -146,9 +145,19 @@ net.ipv4.ip_forward = 1
 EOF
 ```
 
+## Selinux を無効化
+
+実施対象サーバ：管理クライアント以外の5台全て
+
+```
+cat /etc/selinux/config
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+cat /etc/selinux/config
+```
+
 ## 再起動
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 shutdown -r now
@@ -156,34 +165,46 @@ shutdown -r now
 
 ## 確認
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 env | grep -i proxy | sort
 ```
 
-```
-<出力例>
-NO_PROXY=localhost,127.0.0.1,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master
+```text
+<出力例: 上記で設定した Proxy の設定が反映されていることを確認>
 HTTPS_PROXY=http://192.168.13.2:8080/
 HTTP_PROXY=http://192.168.13.2:8080/
+NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
+http_proxy=http://192.168.13.2:8080/
+https_proxy=http://192.168.13.2:8080/
+no_proxy=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
 ```
 
-```
+```bash
 sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
 ```
 
-```
-<出力例>
+```text
+<出力例: すべて 1 が指定されていることを確認>
 net.bridge.bridge-nf-call-iptables = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward = 1
 ```
 
+```bash
+getenforce
+```
+
+```text
+<出力例：以下が出力されることを確認する>
+Permissive
+```
+
 
 ## Docker Engine Install
 
-実施対象サーバ：5台全て
+実施対象サーバ：6台全て
 
 ```bash
 # 古いバージョンのDocker パッケージを削除
@@ -203,7 +224,7 @@ systemctl status docker
 docker run --rm hello-world
 ```
 
-docker に proxy の設定をまだ行っていないため、失敗することを確認する。
+docker で proxy の設定をまだ行っていないため、失敗することを確認する。
 
 ```
 <出力例：以下エラーが出力されることを確認>
@@ -212,18 +233,12 @@ docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial
 See 'docker run --help'.
 ```
 
-> ## dockerhub のアカウント作成
-> 
-> - dockerhubのアカウントを作成する。既にアカウントを持っている場合は不要
-> - AccessToken を作成する
-
-
 ## Docker の Proxy 設定
 
-実施対象サーバ：5台全て
+実施対象サーバ：6台全て
 
 ```bash
-# 設定
+# 設定ファイル作成
 mkdir -p /etc/systemd/system/docker.service.d
 vim /etc/systemd/system/docker.service.d/http-proxy.conf
 ```
@@ -259,7 +274,7 @@ systemctl show --property=Environment docker
 
 ```text
 <出力例>
-Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 NO_PROXY=localhost,127.0.0.1,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16
+Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 "NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc"
 ```
 
 ```bash
@@ -267,10 +282,10 @@ Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:
 docker run --rm hello-world
 ```
 
-proxy の設定を行ったことによりインターネットからコンテナイメージを取得出来るようになり正常に実行できることを確認する。
+docker で proxy の設定を行ったことによりインターネットからコンテナイメージを取得出来るようになり正常に実行できることを確認する。
 
 ```text
-<出力例>
+<出力例: 以下のように hello-world コンテナの実行結果が出力されることを確認する>
 Unable to find image 'hello-world:latest' locally
 latest: Pulling from library/hello-world
 719385e32844: Pull complete
@@ -302,7 +317,7 @@ For more examples and ideas, visit:
 
 ## cri-dockerd のインストール
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 # 前提パッケージインストール
@@ -332,7 +347,7 @@ systemctl status cri-docker.socket
 
 ## kubeadm, kubectl, kubelet のインストール
 
-実施対象サーバ：5台全て
+実施対象サーバ：管理クライアント以外の5台全て
 
 ```bash
 # リポジトリ追加
@@ -347,46 +362,27 @@ EOF
 
 cat /etc/yum.repos.d/kubernetes.repo
 
-# Selinux を無効化
-cat /etc/selinux/config
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-cat /etc/selinux/config
-setenforce 0
-getenforce
-# Permissive であることを確認する
-
 # Kubeadm、kubectl、kubeletをインストール
 dnf install -y kubelet kubeadm kubectl
+
+systemctl daemon-reload
 systemctl start kubelet
 systemctl enable kubelet
 systemctl status kubelet
 # 起動に失敗し code=exited, status=1/FAILURE のエラーが出力されているが現時点では問題無し。
 ```
 
-> ## DNS登録
-> 
-> - API サーバとして使用するドメイン名とVIPをDNSサーバに登録する。本手順では以下を設定するものとして手順を記載する。
->   | ドメイン名 | IPアドレス |
->   | --- | --- |
->   | vip-k8s-master.home.ndeguchi.com | 192.168.14.10 |
-
-
 # /ets/hosts 登録
 
-実施対象サーバ：5台全て
+実施対象サーバ：6台全て
 
 ```bash
 cat <<EOF >> /etc/hosts
 192.168.14.10 vip-k8s-master
 EOF
 
-
-cat <<EOF >> /etc/hosts
-192.168.11.60 vip-k8s-master
-EOF
-
+cat /etc/hosts
 ```
-
 
 ## HAProxy(LB) のインストール
 
@@ -616,12 +612,10 @@ ll  /etc/haproxy/haproxy.cfg
 cat /etc/haproxy/haproxy.cfg
 
 # keepalivedとhaproxyを起動
-systemctl status keepalived
 systemctl start keepalived
 systemctl enable keepalived
 systemctl status keepalived
 
-systemctl status haproxy
 systemctl start haproxy
 systemctl enable haproxy
 systemctl status haproxy
@@ -633,11 +627,8 @@ systemctl status haproxy
 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
 
 
-FIXME: /etc/hostsでいけるか検証中
 ```bash
 kubeadm init --control-plane-endpoint "vip-k8s-master:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
-kubeadm init --control-plane-endpoint "vip-k8s-master.home.ndeguchi.com:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
-kubeadm init --control-plane-endpoint "192.168.14.10:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 ```
 
 <!--
@@ -666,9 +657,9 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 
 You can now join any number of the control-plane node running the following command on each as root:
 
-  kubeadm join vip-k8s-master:8443 --token gh18ai.zthihrittaxna868 \
-        --discovery-token-ca-cert-hash sha256:c2f7b7eb91ab77bab16210ae1a3974b783f079c9f0c468e377636f0defe64ed7 \
-        --control-plane --certificate-key 7b56fa1584cc5408dc44f8643dedd2d2250499d02507327c364ad7bfb3671747
+  kubeadm join vip-k8s-master:8443 --token lfzmy3.o6yiq7wyiv838qg7 \
+        --discovery-token-ca-cert-hash sha256:e1b16fb333f1cb2e10e2ff9d70e8d6921c1ca997512bdf29775319c3e3b0c47c \
+        --control-plane --certificate-key c2a0bedb5862967d22bd2ee16bb155e0f62851d918dcb23a465dadc9244c529f
 
 Please note that the certificate-key gives access to cluster sensitive data, keep it secret!
 As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you can use
@@ -676,8 +667,8 @@ As a safeguard, uploaded-certs will be deleted in two hours; If necessary, you c
 
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join vip-k8s-master:8443 --token gh18ai.zthihrittaxna868 \
-        --discovery-token-ca-cert-hash sha256:c2f7b7eb91ab77bab16210ae1a3974b783f079c9f0c468e377636f0defe64ed7
+kubeadm join vip-k8s-master:8443 --token lfzmy3.o6yiq7wyiv838qg7 \
+        --discovery-token-ca-cert-hash sha256:e1b16fb333f1cb2e10e2ff9d70e8d6921c1ca997512bdf29775319c3e3b0c47c
 ```
 
 上記で出力された以下コマンドは後の作業で使用するため控えておく。
@@ -737,36 +728,99 @@ This node has joined the cluster:
 Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
 ```
 
-## kubectl で接続
+## kubectl で接続 - ControlPlane
 
 実施対象サーバ：ControlPlane#1,2,3 の3台のみで実施 **(注意)**
 
 ```bash
 mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 kubectl get node
 ```
 
 ```text
-<出力例：NotReadyだが問題なし>
-NAME       STATUS     ROLES           AGE   VERSION
-k8s-cp01   NotReady   control-plane   10h   v1.28.3
+<出力例：NotReadyだが現時点では問題なし>
+NAME           STATUS     ROLES           AGE     VERSION
+k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
+k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
+k8s-cp03       NotReady   <none>          87s     v1.28.3
+k8s-worker01   NotReady   <none>          66s     v1.28.3
+k8s-worker02   NotReady   <none>          46s     v1.28.3
+```
+
+## 管理クライアントにGUIインストール
+
+実施対象サーバ：管理クライアント **(注意)**
+
+```bash
+adduser portal
+passwd portal
+dnf update
+dnf group list
+dnf install -y @cinnamon-desktop-environment
+systemctl set-default graphical.target
+reboot
+```
+
+再起動後、コンソールに接続し GUI で起動できていることを確認する。 \
+また、上記コマンドで作成した ユーザ・パスワード でGUIにログインできることを確認する。
+
+- ![img](img/10_GUI_Login.png)
+- ![img](img/11_GUI_Desktop.png)
+
+
+## kubectl で接続 - 管理クライアント
+
+実施対象サーバ：管理クライアント **(注意)**
+
+```bash
+# リポジトリ追加
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
+EOF
+
+cat /etc/yum.repos.d/kubernetes.repo
+
+# kubectl をインストール
+dnf install -y kubectl
+
+mkdir -p $HOME/.kube
+scp root@192.168.14.11:/root/.kube/config /root/.kube/config
+kubectl get node
+```
+
+```text
+<出力例：NotReadyだが現時点では問題なし>
+NAME           STATUS     ROLES           AGE     VERSION
+k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
+k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
+k8s-cp03       NotReady   <none>          87s     v1.28.3
+k8s-worker01   NotReady   <none>          66s     v1.28.3
+k8s-worker02   NotReady   <none>          46s     v1.28.3
 ```
 
 ## CNI (Calico) インストール
 
-実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
-
+実施対象サーバ：管理クライアント **(注意)**
 
 ```bash
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/tigera-operator.yaml
 curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
 cp -p custom-resources.yaml custom-resources.yaml.bak
+
+# 下記 diff 結果の通り変更する
 vim custom-resources.yaml
+
 diff -u custom-resources.yaml.bak custom-resources.yaml
 ```
+
 ```text
+<出力例：diff結果>
 --- custom-resources.yaml.bak   2023-11-12 14:43:06.419699932 +0900
 +++ custom-resources.yaml       2023-11-12 14:43:52.123696933 +0900
 @@ -10,7 +10,7 @@
@@ -786,152 +840,28 @@ watch kubectl get pods -n calico-system
 ```
 
 ```text
+<出力例：全てのPodが "1/1 Running" または "2/2 Running" になるまで待機する>
 NAME                                       READY   STATUS    RESTARTS   AGE
-calico-kube-controllers-779cc75df9-9xdsv   1/1     Running   0          75s
-calico-node-jnt82                          1/1     Running   0          76s
-calico-node-l62kb                          1/1     Running   0          76s
-calico-typha-65589bbc75-28gmd              1/1     Running   0          76s
-csi-node-driver-hcwm8                      2/2     Running   0          76s
-csi-node-driver-vxb6l                      2/2     Running   0          76s
-```
-
-<hr>
-
-
-```bash
-curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/calico.yaml -O
-cp -p calico.yaml calico.yaml.org
-vim calico.yaml
-diff -u calico.yaml.org calico.yaml
-  | --- calico.yaml.org	2023-11-12 05:45:51.689718010 +0900
-  | +++ calico.yaml	2023-11-12 05:46:56.248715015 +0900
-  | @@ -4797,8 +4797,8 @@
-  |              # The default IPv4 pool to create on startup if none exists. Pod IPs will be
-  |              # chosen from this range. Changing this value after installation will have
-  |              # no effect. This should fall within `--cluster-cidr`.
-  | -            # - name: CALICO_IPV4POOL_CIDR
-  | -            #   value: "192.168.0.0/16"
-  | +            - name: CALICO_IPV4POOL_CIDR
-  | +              value: "10.20.0.0/16"
-  |              # Disable file logging so `kubectl logs` works.
-  |              - name: CALICO_DISABLE_FILE_LOGGING
-  |                value: "true"
-kubectl apply -f calico.yaml
-k get pod -A
-```
-
-
-
-
-```bash
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/tigera-operator.yaml
-curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml -O
-cp custom-resources.yaml custom-resources.yaml.org
-vim custom-resources.yaml.org
-```
-
-```text
---- custom-resources.yaml.org	2023-11-12 05:23:02.339938360 +0900
-+++ custom-resources.yaml	2023-11-12 05:23:26.910937220 +0900
-@@ -10,7 +10,7 @@
-     # Note: The ipPools section cannot be modified post-install.
-     ipPools:
-     - blockSize: 26
--      cidr: 192.168.0.0/16
-+      cidr: 10.20.0.0/16
-       encapsulation: VXLANCrossSubnet
-       natOutgoing: Enabled
-       nodeSelector: all()
-```
-
-```bash
-kubectl create -f custom-resources.yaml
-watch kubectl get pods -n calico-system
-```
-
-```text
-NAME                                       READY   STATUS    RESTARTS   AGE
-calico-kube-controllers-7b55dc5b57-hm8rq   1/1     Running   0          2m32s
-calico-node-mt7xn                          1/1     Running   0          2m32s
-calico-node-tjrx7                          1/1     Running   0          2m32s
-calico-typha-f55bd8c8-wbs7m                1/1     Running   0          2m32s
-csi-node-driver-lsbkn                      2/2     Running   0          2m32s
-csi-node-driver-r89gp                      2/2     Running   0          2m32s
-```
-
-
-```bash
-# Calico Operator をインストール
-# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
-# 
-# kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
-# 
-# 
-# cd ; curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml -O
-# kubectl create -f custom-resources.yaml
-# 
-# # Calico manifest をインストール
-# curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml -O
-# 
-# cp calico.yaml calico.yaml.org
-# vim calico.yaml
-```
-
-```
---- calico.yaml.org     2023-11-12 03:47:11.674988099 +0900
-+++ calico.yaml 2023-11-12 03:51:17.325976705 +0900
-@@ -4797,8 +4797,8 @@
-             # The default IPv4 pool to create on startup if none exists. Pod IPs will be
-             # chosen from this range. Changing this value after installation will have
-             # no effect. This should fall within `--cluster-cidr`.
--            # - name: CALICO_IPV4POOL_CIDR
--            #   value: "192.168.0.0/16"
-+            - name: CALICO_IPV4POOL_CIDR
-+              value: "10.20.0.0/16"
-             # Disable file logging so `kubectl logs` works.
-             - name: CALICO_DISABLE_FILE_LOGGING
-               value: "true"
-```
-
-```bash
-kubectl apply -f calico.yaml
-kubectl get pods -n kube-system
-```
-
-```text
-<出力例：全ての Pod が Running であることを確認する。Pending や ContainerCreating が存在する場合は数十秒待ってから再実行する。>
-NAME                                       READY   STATUS    RESTARTS        AGE
-calico-kube-controllers-7ddc4f45bc-xh6p6   1/1     Running   0               5m47s
-calico-node-2bdtx                          1/1     Running   0               5m47s
-calico-node-2k7tr                          1/1     Running   0               5m47s
-calico-node-8lgmw                          1/1     Running   0               5m47s
-calico-node-ftmt6                          1/1     Running   0               5m47s
-calico-node-wpmzq                          1/1     Running   0               5m47s
-coredns-5dd5756b68-8n2ml                   1/1     Running   0               75m
-coredns-5dd5756b68-fhrmk                   1/1     Running   0               75m
-etcd-k8s-cp01                              1/1     Running   0               75m
-etcd-k8s-cp02                              1/1     Running   0               59m
-etcd-k8s-cp03                              1/1     Running   0               44m
-kube-apiserver-k8s-cp01                    1/1     Running   0               75m
-kube-apiserver-k8s-cp02                    1/1     Running   0               59m
-kube-apiserver-k8s-cp03                    1/1     Running   0               44m
-kube-controller-manager-k8s-cp01           1/1     Running   1 (59m ago)     75m
-kube-controller-manager-k8s-cp02           1/1     Running   1 (5m22s ago)   59m
-kube-controller-manager-k8s-cp03           1/1     Running   1 (4m6s ago)    44m
-kube-proxy-c4fm4                           1/1     Running   0               44m
-kube-proxy-f7747                           1/1     Running   0               8m31s
-kube-proxy-pdpbv                           1/1     Running   0               59m
-kube-proxy-vckfb                           1/1     Running   0               75m
-kube-proxy-z9k2q                           1/1     Running   0               7m39s
-kube-scheduler-k8s-cp01                    1/1     Running   2 (4m30s ago)   75m
-kube-scheduler-k8s-cp02                    1/1     Running   1 (5m20s ago)   59m
-kube-scheduler-k8s-cp03                    1/1     Running   0               44m
+calico-kube-controllers-697c9f4d8d-wsq6m   1/1     Running   0          3m1s
+calico-node-748gb                          1/1     Running   0          3m2s
+calico-node-8wpjf                          1/1     Running   0          3m2s
+calico-node-cwkgh                          1/1     Running   0          3m2s
+calico-node-q82l8                          1/1     Running   0          3m2s
+calico-node-zt6pt                          1/1     Running   0          3m2s
+calico-typha-768ff5d5fd-72jdv              1/1     Running   0          2m56s
+calico-typha-768ff5d5fd-b4tz4              1/1     Running   0          3m2s
+calico-typha-768ff5d5fd-vz225              1/1     Running   0          2m56s
+csi-node-driver-flkp4                      2/2     Running   0          3m1s
+csi-node-driver-jrdtd                      2/2     Running   0          3m1s
+csi-node-driver-nkpdr                      2/2     Running   0          3m1s
+csi-node-driver-sh7jm                      2/2     Running   0          3m1s
+csi-node-driver-tlpn5                      2/2     Running   0          3m1s
 ```
 
 
 ## Kubernetes 正常性確認
 
-実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+実施対象サーバ：管理クライアント **(注意)**
 
 Kubernetes クラスタが正常に動作していることを確認する。
 
@@ -987,8 +917,7 @@ tigera-operator   tigera-operator-94d7f7696-99xml            1/1     Running   2
 
 ## MetalLB のインストール
 
-実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
-
+実施対象サーバ：管理クライアント **(注意)**
 
 ```bash
 kubectl get configmap kube-proxy -n kube-system -o yaml
@@ -1011,7 +940,7 @@ watch kubectl get pod -n metallb-system
 ```
 
 ```
-<出力例: 全ての Pod が Running であることを確認する。>
+<出力例: 全ての Pod が 1/1 Running になるまで待機する。>
 NAME                          READY   STATUS    RESTARTS   AGE
 controller-786f9df989-kfz9k   1/1     Running   0          76s
 speaker-54hlx                 1/1     Running   0          76s
