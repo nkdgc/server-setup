@@ -793,6 +793,8 @@ cat /etc/yum.repos.d/kubernetes.repo
 dnf install -y kubectl
 
 mkdir -p $HOME/.kube
+
+# ControlPlane#1 から kube-config を取得する
 scp root@192.168.14.11:/root/.kube/config /root/.kube/config
 kubectl get node
 ```
