@@ -247,17 +247,12 @@ Environment="HTTPS_PROXY=http://192.168.13.2:8080"
 Environment="NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc"
 ```
 
-<!--
-FIXME
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
-- 192.168.13.19
-  - Kubernetes の API サーバとして指定する VIP
-- 192.168.14.11 〜 192.168.14.22
-  - ControlPlane#1-3, WorkerNode#1-2 の IP
-- vip-k8s-master.home.ndeguchi.com
-  - Kubernetes の API サーバとして指定するドメイン名を指定
--->
+- 192.168.14.10
+  - Kubernetes の API サーバとして指定する IP アドレスを指定
+- 192.168.14.11,12,13,21,22
+  - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
 
 ```bash
 # 反映
@@ -631,12 +626,6 @@ systemctl status haproxy
 kubeadm init --control-plane-endpoint "vip-k8s-master:8443" --upload-certs --pod-network-cidr 10.20.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
 ```
 
-<!--
-FIXME
-- vip-k8s-master.home.ndeguchi.com
-  - API サーバのドメイン名を指定
--->
-
 ```text
 <出力例: 上記コマンドの実行に成功すると、標準出力の末尾に以下と同様の情報が出力される>
 Your Kubernetes control-plane has initialized successfully!
@@ -818,8 +807,8 @@ kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.3
 curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
 cp -p custom-resources.yaml custom-resources.yaml.bak
 
-# 下記 diff 結果の通り変更する
 vim custom-resources.yaml
+# 下記 diff 結果の通り変更する
 
 diff -u custom-resources.yaml.bak custom-resources.yaml
 ```
