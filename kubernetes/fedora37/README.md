@@ -671,7 +671,7 @@ kubeadm join vip-k8s-master:8443 --token lfzmy3.o6yiq7wyiv838qg7 \
         --discovery-token-ca-cert-hash sha256:e1b16fb333f1cb2e10e2ff9d70e8d6921c1ca997512bdf29775319c3e3b0c47c
 ```
 
-上記で出力された以下コマンドは後の作業で使用するため控えておく。
+上記で出力されたコマンドは後の作業で使用するため控えておく。
 
 
 ## ControlPlane 追加
