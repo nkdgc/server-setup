@@ -1,6 +1,7 @@
 # Hands-on 50-1 : Label
 
 ```bash
+# Label を付与した Pod を作成
 kubectl run my-nginx1 --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1 -l key1=value1
 kubectl run my-nginx2 --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1 -l key1=value2
 

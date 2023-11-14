@@ -11,7 +11,7 @@ metadata:
   name: cronjob-test-01
 spec:
   schedule: "* * * * *"
-  concurrencyPolicy: Forbid
+  concurrencyPolicy: Allow
   jobTemplate:
     spec:
       template:
@@ -23,7 +23,7 @@ spec:
             args:
             - /bin/sh
             - "-c"
-            - "echo $(date) Cronjob start; sleep 5; echo $(date) Cronjob end"
+            - "echo $(date) Cronjob start; sleep 70; echo $(date) Cronjob end"
 ```
 
 ```bash
@@ -33,7 +33,7 @@ kubectl apply -f cronjob.yaml
 kubectl get cronjob
 
 # 以下コマンドを実行したうえで待機し、1分間隔で処理が起動することを確認
-kubectl get pod -w
+watch kubectl get pod
 
 kubectl logs <直近起動したPodのPod名>
 

@@ -30,8 +30,15 @@ kubectl get pod
 ```bash
 # ConfigMap を作成
 kubectl create configmap cm-1 --from-literal=hoge=HOGE --from-literal=fuga=FUGA --from-literal=piyo=PIYO
+
+# ConfigMap をリスト表示
 kubectl get configmap
+
+# ConfigMap の内容を表示（get）
 kubectl get configmap cm-1 -o yaml
+
+# ConfigMap の内容を表示（describe）
+kubectl describe configmap cm-1
 ```
 
 # Hands-on 70-3 : ConfigMap を ファイルとして Pod にマウント

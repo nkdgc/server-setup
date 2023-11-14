@@ -124,6 +124,42 @@ kubectl get pod -o wide
 # アクセス確認
 kubectl exec -it testpod -- wget http://<my-nginx の IP> -q -O -
   # -> v0.2 のページが取得できることを確認
+```
+
+# Hands-on 30-5 : Rollback
+
+```bash
+# deployment の現在の revision を確認
+kubectl describe deployment my-nginx | grep revision
+
+# history を表示
+kubectl rollout history deployment/my-nginx
+
+# revision=1 の詳細を表示
+kubectl rollout history deployment/my-nginx --revision=1
+
+# revision=2 の詳細を表示
+kubectl rollout history deployment/my-nginx --revision=2
+
+# revision=1 に Rollback
+kubectl rollout undo deployment my-nginx --to-revision=1
+
+# Rollback 後の revision を確認
+kubectl describe deployment my-nginx | grep revision
+
+# revision=3 の詳細を表示
+kubectl rollout history deployment/my-nginx --revision=3
+
+# deploy されている Pod のtagを確認
+kubectl get pod -o wide
+  # -> Pod の NAME と IP を確認(3つあるうちのどれでも良い)
+
+kubectl describe pod <Pod の NAME> | grep "Image:"
+  # -> tag がアップデート前の 0.1 に戻っていることを確認
+
+# アクセス確認
+kubectl exec -it testpod -- wget http://<Pod の IP> -q -O -
+  # -> v0.2 ではないページが取得できることを確認
 
 # 削除
 kubectl get deployment
