@@ -139,3 +139,18 @@ docker ps -a | grep -e "CONTAINER ID" -e ${USER}-nginx
   # -> 存在しないこと
 ```
 
+# Appendix: よく利用する Docker コマンド一覧
+
+| コマンド構文                                                                      | 内容                                         |
+| :---                                                                              | :---                                         |
+| docker image ls (docker images)                                                   | ローカルにあるコンテナイメージの一覧を表示   |
+| docker image build -t <タグ名> <Dockerfile を配置したフォルダ>  (docker build 〜) | コンテナイメージを作成                       |
+| docker image push (docker push)                                                   | イメージをリポジトリに登録 (Upload)          |
+| docker image rm (docker rmi)                                                      | 不要になったイメージを削除                   |
+| docker container ls (docker ps)                                                   | 起動中のコンテナ一覧をを表示                 |
+| docker container run (docker run)                                                 | コンテナを新規作成して起動                   |
+| docker container stop (docker stop)                                               | コンテナを停止                               |
+| docker container start (docker start)                                             | コンテナを起動                               |
+| docker container rm (docker rm)                                                   | 停止しているコンテナを削除                   |
+| docker logs [--follow] <コンテナ名 or ID>                                         | コンテナのログを表示                         |
+| docker exec [options] <コンテナ名 or ID> <コマンド>                               | コンテナ上でコマンドを実行                   |
