@@ -94,7 +94,7 @@ docker push <Harbor FQDN>/${USER}/${USER}-nginx:0.2
 ```
 
 
-# Hands-on 30-2 : nginx をdeploymentで実行 -> アップデート
+# Hands-on 30-4 : nginx をdeploymentで実行 -> アップデート
 
 ```bash
 cd
