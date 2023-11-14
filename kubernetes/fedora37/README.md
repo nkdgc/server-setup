@@ -1085,7 +1085,7 @@ Commercial support is available at
 管理クライアントの GUI からも nginx にアクセスできることを確認する。
 
 - Firefoxを開き proxy を設定する
-  - HTTPプロキシー: 192.168.13.2/8080
+  - HTTPプロキシー: 192.168.13.2:8080
   - このプロキシーを HTTPS でも使用する にチェック
   - プロキシーなしで接続: 192.168.14.0/24
   - ![img](img/20_Firefox_Proxy.png)
