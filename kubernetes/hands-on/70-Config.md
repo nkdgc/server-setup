@@ -3,7 +3,7 @@
 ```bash
 # 環境変数を指定して Pod を作成
 cd
-kubectl run testpod --image=busybox --env="PING=PONG" --command sleep 900 --dry-run=client -o yaml > testpod.yaml
+kubectl run testpod --image=busybox --env="PING=PONG" --command sleep infinity --dry-run=client -o yaml > testpod.yaml
 cat testpod.yaml
   # 環境変数（PING=PONG）がどのように定義されているのか確認しましょう
 
@@ -45,7 +45,7 @@ kubectl describe configmap cm-1
 
 ```bash
 cd
-kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep 900'
+kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep infinity'
 vim testpod.yaml
   # -> 以下 + で始まる行を追記する
   #    |      spec:
@@ -53,7 +53,7 @@ vim testpod.yaml
   #    |        - command:
   #    |          - /bin/sh
   #    |          - -c
-  #    |          - sleep 900
+  #    |          - sleep infinity
   #    |          image: busybox
   #    |          name: busybox
   #    |          resources: {}
@@ -89,7 +89,7 @@ kubectl get deployment
 
 ```bash
 cd
-kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep 900'
+kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep infinity'
 vim testpod.yaml
   # -> 以下 + で始まる行を追記する
   #    |      spec:
@@ -97,7 +97,7 @@ vim testpod.yaml
   #    |        - command:
   #    |          - /bin/sh
   #    |          - -c
-  #    |          - sleep 900
+  #    |          - sleep infinity
   #    |          image: busybox
   #    |          name: busybox
   #    |          resources: {}
@@ -128,6 +128,8 @@ kubectl get deployment
 
 ```bash
 # Secret に登録するファイルを作成
+cd
+
 cat <<EOF > db-cred.txt
 db_user=postgres
 db_password=VMware1!
@@ -141,17 +143,22 @@ kubectl create secret generic --save-config db-cred --from-env-file=db-cred.txt
 kubectl get secret
 
 kubectl get secret db-cred -o yaml
+  # -> 以下データが定義されていることを確認
+  #    data:
+  #      db_password: **********
+  #      db_user: **********
 
-# Secret 内容確認
-echo "Vk13YXJlMSE=" | base64 -d
-echo "cG9zdGdyZXM=" | base64 -d
+
+# Secret の内容を decode して中身を確認
+echo "<上で確認した db_password の値>" | base64 -d
+echo "<上で確認した db_user の値>" | base64 -d
 ```
 
 # Hands-on 70-5 : Secret を環境変数に指定
 
 ```bash
 cd
-kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep 900'
+kubectl create deployment testpod --image=busybox --dry-run=client -o yaml > testpod.yaml -- /bin/sh -c 'sleep infinity'
 vim testpod.yaml
   # -> 以下 + で始まる行を追記する
   #     |      spec:
@@ -159,7 +166,7 @@ vim testpod.yaml
   #     |        - command:
   #     |          - /bin/sh
   #     |          - -c
-  #     |          - sleep 900
+  #     |          - sleep infinity
   #     |          image: busybox
   #     |          name: busybox
   #     |          resources: {}

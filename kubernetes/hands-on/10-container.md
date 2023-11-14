@@ -88,6 +88,8 @@ docker ps -a | grep -e "CONTAINER ID" -e ${USER}-nginx
 ```bash
 # Harbor にログイン
 docker login <Harbor FQDN>
+  # Username: admin
+  # Password: *******
 
 # タグ付与
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
@@ -116,7 +118,7 @@ docker pull <Harbor FQDN>/${USER}/${USER}-nginx:0.1
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
   
 # 起動
-docker run -d -p <MyPortNo>:80 --name ${USER}-nginx <Harbor FQDN>/${USER}/${USER}-nginx
+docker run -d -p <MyPortNo>:80 --name ${USER}-nginx <Harbor FQDN>/${USER}/${USER}-nginx:0.1
 
 # 起動しているか確認
 docker ps | grep -e "CONTAINER ID" -e ${USER}-nginx

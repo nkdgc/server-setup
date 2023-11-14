@@ -9,7 +9,7 @@ kubectl get pod -o wide
   # -> Pod に割り当てられている IP アドレスを確認する
 
 # アクセス確認のためテスト用Podを起動
-kubectl run testpod --image=busybox --command sleep 900
+kubectl run testpod --image=busybox --command sleep infinity
 
 # 起動確認
 kubectl get pod
@@ -20,6 +20,7 @@ kubectl exec -it testpod -- wget http://<my-nginx の IP> -q -O -
 
 # ログ確認
 kubectl logs -f my-nginx
+  # -> ログの最下行に wget で GET した時のログが出力されていること
 
 # もう1枚ターミナルを開き nginx にアクセス
 kubectl exec -it testpod -- wget http://<my-nginx の IP> -q -O -
@@ -45,6 +46,7 @@ kubectl apply -f my-nginx.yaml
 
 # 起動確認
 kubectl get pod
+  # -> READY="1/1", STATUS="RUNNING" であり正常に起動していること
 
 # pod 削除
 kubectl get pod

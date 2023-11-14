@@ -14,7 +14,7 @@ kubectl get service
   # -> CLUSTER-IP の IP アドレスを確認
 
 # アクセス確認のためテスト用Podを起動
-kubectl run testpod --image=busybox --command sleep 900
+kubectl run testpod --image=busybox --command sleep infinity
 
 # 起動確認
 kubectl get pod
@@ -57,7 +57,7 @@ kubectl get service
 
 # WorkerNode の IP アドレスを確認
 kubectl get node -o wide
-  # -> node の EXTERNAL-IP を確認
+  # -> node の EXTERNAL-IP を確認(どのNodeのIPでも構いません)
 
 # Service にアクセス
 curl http://<EXTERNAL-IP>:<PORT>

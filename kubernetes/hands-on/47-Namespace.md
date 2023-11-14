@@ -3,6 +3,7 @@
 ```bash
 # Namespace 一覧取得
 kubectl get namespace
+  # -> 自身が作業している namespace が存在することを確認しましょう
 ```
 
 # Hands-on 47-2 : Namespace 作成
@@ -36,7 +37,4 @@ kubectl get pod -n ${USER}2
 kubectl delete namespace ${USER}2
 kubectl get namespace
 ```
-
-
-
 

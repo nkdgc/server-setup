@@ -4,7 +4,7 @@
 # Node 一覧取得
 kubectl get node
   # -> クラスタに登録されているマシンの台数は何台か確認しましょう
-       control-plane, node はそれぞれ何台か確認しましょう
+  #    control-plane, node はそれぞれ何台か確認しましょう
 
 # Node 一覧取得(wide)
 kubectl get node -o wide
@@ -12,6 +12,10 @@ kubectl get node -o wide
 
 # Node 詳細情報取得
 kubectl get node <Node の Name> -o yaml
+  # -> CPU/Memory の容量を確認しましょう(status.capacity)
+  #    Node の CPU アーキテクチャを確認しましょう(status.nodeInfo.architecture)
+  #    Node の OS を確認しましょう(status.nodeInfo.osImage)
+  #    Node内で保持しているコンテナイメージのリストを確認しましょう(status.images)
 ```
 
 

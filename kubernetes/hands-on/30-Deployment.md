@@ -12,7 +12,7 @@ kubectl get pod -o wide
   # -> NAME と IP を確認する
 
 # アクセス確認のためテスト用Podを起動
-kubectl run testpod --image=busybox --command sleep 900
+kubectl run testpod --image=busybox --command sleep infinity
 
 # 起動確認
 kubectl get pod
@@ -107,19 +107,20 @@ kubectl apply -f my-nginx-deployment.yaml
 kubectl get deployment
 kubectl get pod
   # -> AGE 列の時間から再作成されていることを確認
+  #    何度か実行して全てのPodが入れ替わるのを待つ
 
 kubectl describe pod <Pod の NAME。例：my-nginx-64c65c48f6-lngbr>
   # -> Image が 0.1 ではなく 0.2 になっていることを確認
 
 # アクセス確認のためテスト用Podを起動
-kubectl run testpod --image=busybox --command sleep 900
+kubectl run testpod --image=busybox --command sleep infinity
 
 # 起動確認
 kubectl get pod
 
 # Pod 起動確認
 kubectl get pod -o wide
-  # -> my-nginx の NAME と IP を確認する
+  # -> my-nginx の NAME と IP を確認する(my-nginxであればどのPodでも構いません)
 
 # アクセス確認
 kubectl exec -it testpod -- wget http://<my-nginx の IP> -q -O -
@@ -129,6 +130,9 @@ kubectl exec -it testpod -- wget http://<my-nginx の IP> -q -O -
 # Hands-on 30-5 : Rollback
 
 ```bash
+# 現在実行されている Pod の tag を確認
+kubectl describe pod -l app=my-nginx | grep "Image:"
+
 # deployment の現在の revision を確認
 kubectl describe deployment my-nginx | grep revision
 
@@ -151,13 +155,13 @@ kubectl describe deployment my-nginx | grep revision
 kubectl rollout history deployment/my-nginx --revision=3
 
 # deploy されている Pod のtagを確認
-kubectl get pod -o wide
-  # -> Pod の NAME と IP を確認(3つあるうちのどれでも良い)
-
-kubectl describe pod <Pod の NAME> | grep "Image:"
+kubectl describe pod -l app=my-nginx | grep "Image:"
   # -> tag がアップデート前の 0.1 に戻っていることを確認
 
 # アクセス確認
+kubectl get pod -o wide
+  # -> my-nginx の IP を確認（3つあるうちのどれでも構いません）
+
 kubectl exec -it testpod -- wget http://<Pod の IP> -q -O -
   # -> v0.2 ではないページが取得できることを確認
 
