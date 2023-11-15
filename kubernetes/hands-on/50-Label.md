@@ -1,4 +1,4 @@
-# Hands-on 50-1 : Label
+# Hands-on 50-1 : Label付与, 取得
 
 ```bash
 # Label を付与した Pod を作成
