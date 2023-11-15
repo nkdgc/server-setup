@@ -87,17 +87,17 @@ docker ps -a | grep -e "CONTAINER ID" -e ${USER}-nginx
 
 ```bash
 # Harbor にログイン
-docker login <Harbor FQDN>
+docker login ${harbor_fqdn}
   # Username: admin
   # Password: *******
 
 # タグ付与
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
-docker tag ${USER}-nginx:0.1 <Harbor FQDN>/${USER}/${USER}-nginx:0.1
+docker tag ${USER}-nginx:0.1 ${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
 
 # Harbor へ Push
-docker push <Harbor FQDN>/${USER}/${USER}-nginx:0.1
+docker push ${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 ```
 
 - ブラウザでHarborにアクセスし格納できていることを確認
@@ -106,19 +106,19 @@ docker push <Harbor FQDN>/${USER}/${USER}-nginx:0.1
 # ローカル環境からコンテナイメージを削除
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
 
-docker rmi ${USER}-nginx:0.1 <Harbor FQDN>/${USER}/${USER}-nginx:0.1
+docker rmi ${USER}-nginx:0.1 ${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
   # -> 存在しないことを確認
 
 # Harbor から pull
-docker pull <Harbor FQDN>/${USER}/${USER}-nginx:0.1
+docker pull ${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 
 # pull できていることを確認
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
   
 # 起動
-docker run -d -p <MyPortNo>:80 --name ${USER}-nginx <Harbor FQDN>/${USER}/${USER}-nginx:0.1
+docker run -d -p <MyPortNo>:80 --name ${USER}-nginx ${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 
 # 起動しているか確認
 docker ps | grep -e "CONTAINER ID" -e ${USER}-nginx

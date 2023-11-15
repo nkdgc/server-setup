@@ -20,7 +20,7 @@ kubectl get namespace
 
 ```bash
 # 作成した Namespace に Pod を deploy
-kubectl run my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1 -n ${USER}2
+kubectl run my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1 -n ${USER}2
 
 # pod 一覧表示
 kubectl get pod

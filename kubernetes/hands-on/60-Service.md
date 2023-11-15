@@ -2,7 +2,7 @@
 
 ```bash
 # Deployment 作成
-kubectl create deployment my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1
+kubectl create deployment my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 kubectl get deployment
 
 # Pod 確認
@@ -41,7 +41,7 @@ kubectl get service
 
 ```bash
 # Deployment 作成
-kubectl create deployment my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1
+kubectl create deployment my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 kubectl get deployment
 
 # Pod 確認
@@ -77,7 +77,7 @@ kubectl get service
 
 ```bash
 # Deployment 作成
-kubectl create deployment my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1
+kubectl create deployment my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 kubectl get deployment
 
 # Pod 確認

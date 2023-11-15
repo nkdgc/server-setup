@@ -2,7 +2,7 @@
 
 ```bash
 # nginx を起動
-kubectl run my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1
+kubectl run my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 
 # 起動確認
 kubectl get pod -o wide
@@ -38,7 +38,7 @@ kubectl get pod
 ```bash
 # yaml作成
 cd
-kubectl run my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1 --dry-run=client -o yaml > my-nginx.yaml
+kubectl run my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1 --dry-run=client -o yaml > my-nginx.yaml
 cat my-nginx.yaml
 
 # yaml適用

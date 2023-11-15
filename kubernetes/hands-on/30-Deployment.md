@@ -2,7 +2,7 @@
 
 ```bash
 # nginx の deployment を作成
-kubectl create deployment my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1
+kubectl create deployment my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1
 
 # deployment を確認
 kubectl get deployment
@@ -45,7 +45,7 @@ kubectl get pod
 ```bash
 # nginx の deployment を作成
 cd
-kubectl create deployment my-nginx --image=<Harbor FQDN>/${USER}/${USER}-nginx:0.1 --dry-run=client -o yaml > my-nginx-deployment.yaml 
+kubectl create deployment my-nginx --image=${harbor_fqdn}/${USER}/${USER}-nginx:0.1 --dry-run=client -o yaml > my-nginx-deployment.yaml 
 cat my-nginx-deployment.yaml 
 kubectl apply -f my-nginx-deployment.yaml 
 
@@ -86,11 +86,11 @@ EOF
 
 cat index.html
 
-docker build -t <Harbor FQDN>/${USER}/${USER}-nginx:0.2 .
+docker build -t ${harbor_fqdn}/${USER}/${USER}-nginx:0.2 .
 
 docker images | grep -e "REPOSITORY" -e "${USER}-nginx"
 
-docker push <Harbor FQDN>/${USER}/${USER}-nginx:0.2
+docker push ${harbor_fqdn}/${USER}/${USER}-nginx:0.2
 ```
 
 
@@ -100,8 +100,8 @@ docker push <Harbor FQDN>/${USER}/${USER}-nginx:0.2
 cd
 vim my-nginx-deployment.yaml
   # image の tag を 0.1 から 0.2 に変更
-  # (変更前) - image: <Harbor FQDN>/ndeguchi/ndeguchi-nginx:0.1
-  # (変更後) - image: <Harbor FQDN>/ndeguchi/ndeguchi-nginx:0.2
+  # (変更前) - image: ${harbor_fqdn}/ndeguchi/ndeguchi-nginx:0.1
+  # (変更後) - image: ${harbor_fqdn}/ndeguchi/ndeguchi-nginx:0.2
 
 kubectl apply -f my-nginx-deployment.yaml
 kubectl get deployment
