@@ -15,6 +15,7 @@ page=1
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "FE"
 tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/fe" Enter
+tmux send-keys -t ${session}:${page} "npm install" Enter
 tmux send-keys -t ${session}:${page} "ng build" Enter
 tmux send-keys -t ${session}:${page} "sudo npm install -g http-server" Enter
 tmux send-keys -t ${session}:${page} "http-server ./dist/fe --port 4200" Enter

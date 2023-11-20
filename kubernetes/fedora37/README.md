@@ -45,17 +45,22 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ip a
   ```
 
+# dnfリポジトリキャッシュ更新無効化
+
+実施対象サーバ：6台全て
+
+```bash
+systemctl stop dnf-makecache.timer
+systemctl disable dnf-makecache.timer
+systemctl status dnf-makecache.timer --no-pager
+```
+
 ## Fedora の Proxy 設定
 
 実施対象サーバ：6台全て
 
 ```bash
-vim /etc/environment
-```
-
-以下を末尾に追記
-
-```text
+cat <<EOF >> /etc/environment
 export http_proxy=http://192.168.13.2:8080/
 export HTTP_PROXY=http://192.168.13.2:8080/
 
@@ -64,6 +69,9 @@ export HTTPS_PROXY=http://192.168.13.2:8080/
 
 export no_proxy=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
 export NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc
+EOF
+
+source /etc/environment
 ```
 
 - 192.168.13.2:8080
@@ -72,10 +80,54 @@ export NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,19
   - Kubernetes の API サーバとして指定する IP アドレスを指定
 - 192.168.14.11,12,13,21,22
   - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
-  
-```bash
-source /etc/environment
+
+## dnf(yum) のリポジトリ指定
+
+実施対象サーバ：6台全て
+
+Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ指定を mirror リストから riken.jp に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
+
 ```
+cd /etc/
+
+# backup
+ls -ld yum.repos.d*
+  # -> yum.repos.d/ が存在すること
+
+cp -pr yum.repos.d yum.repos.d.bak
+ls -ld yum.repos.d*
+  # -> yum.repos.d/ と yum.repos.d.bak/ が存在すること
+
+# 変更
+cd yum.repos.d
+sed -i -e "s/^metalink=/#metalink=/g" ./*
+sed -i -e "s,^#baseurl=http://download.example/pub/fedora/linux,baseurl=https://ftp.riken.jp/Linux/fedora,g" ./*
+sed -i -e "s/^enabled=1/enabled=0/g" fedora-cisco-openh264.repo
+
+# 差分出力（TeratermLogに記録するだけ。中身を読む必要はない）
+diff -u ../yum.repos.d.bak/ .
+
+# 動作確認
+dnf check-update
+```
+
+実行結果の冒頭に以下と同様の内容が出力され、リポジトリから情報を取得できていることを確認する。
+
+```text
+Fedora 37 - x86_64                        32 MB/s |  82 MB     00:02
+Fedora Modular 37 - x86_64               7.1 MB/s | 3.8 MB     00:00
+Fedora 37 - x86_64 - Updates              18 MB/s |  40 MB     00:02
+Fedora Modular 37 - x86_64 - Updates     1.7 MB/s | 2.9 MB     00:01
+```
+
+## package update
+
+実施対象サーバ：6台全て
+
+```
+dnf update -y
+```
+
 
 ## (OPTIONAL) tmux,vim,bash,dnf-cache
 
@@ -86,19 +138,53 @@ source /etc/environment
 ```bash
 # tmux インストール
 dnf install -y tmux
-curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/tmux/.tmux.conf
 
-# .vimrc 取得
-curl -O https://raw.githubusercontent.com/nkdgc/server-setup/main/vim/.vimrc
+# .tmux.conf
+cat <<EOF > ~/.tmux.conf
+set -g prefix C-q
+unbind C-b
+bind h select-pane -L
+bind j select-pane -D
+bind k select-pane -U
+bind l select-pane -R
+setw -g mode-keys vi
+bind -T copy-mode-vi v send -X begin-selection
+bind | split-window -h
+bind - split-window -v
+bind -r H resize-pane -L 1
+bind -r J resize-pane -D 1
+bind -r K resize-pane -U 1
+bind -r L resize-pane -R 1
+EOF
+
+# .vimrc
+cat <<EOF > ~/.vimrc
+set nocompatible
+set number
+set tabstop=2
+set showmatch
+set incsearch
+set hlsearch
+set nowrapscan
+set ignorecase
+set fileencodings=utf-8,utf-16le,cp932,iso-2022-jp,euc-jp,default,latin
+set foldmethod=marker
+set nf=""
+nnoremap <ESC><ESC> :nohlsearch<CR>
+set laststatus=2
+set statusline=%t%m%r%h%w\%=[POS=%p%%/%LLINES]\[TYPE=%Y][FORMAT=%{&ff}]\%{'[ENC='.(&fenc!=''?&fenc:&enc).']'}
+syntax enable
+set directory=/tmp
+set backupdir=/tmp
+set undodir=/tmp
+set paste
+EOF
 
 # .bashrc 追記
 cat <<EOF >> ~/.bashrc
 alias k=kubectl
 set -o vi
 EOF
-
-# dnfリポジトリキャッシュ更新無効化
-systemctl disable dnf-makecache.timer
 ```
 
 ## Firewall Stop
@@ -108,7 +194,7 @@ systemctl disable dnf-makecache.timer
 ```bash
 systemctl stop firewalld
 systemctl disable firewalld
-systemctl status firewalld
+systemctl status firewalld --no-pager
 # "Active: inactive (dead)" であることを確認する
 ```
 
@@ -156,7 +242,7 @@ cat /etc/selinux/config
 
 ## 再起動
 
-実施対象サーバ：管理クライアント以外の5台全て
+実施対象サーバ：6台全て
 
 ```bash
 shutdown -r now
@@ -219,7 +305,7 @@ dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker
 # Docker Engine を起動
 systemctl start docker
 systemctl enable docker
-systemctl status docker 
+systemctl status docker --no-pager
 docker run --rm hello-world
 ```
 
@@ -239,14 +325,20 @@ See 'docker run --help'.
 ```bash
 # 設定ファイル作成
 mkdir -p /etc/systemd/system/docker.service.d
-vim /etc/systemd/system/docker.service.d/http-proxy.conf
-```
-
-```
+cat <<EOF > /etc/systemd/system/docker.service.d/http-proxy.conf
 [Service]
 Environment="HTTP_PROXY=http://192.168.13.2:8080"
 Environment="HTTPS_PROXY=http://192.168.13.2:8080"
 Environment="NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc"
+EOF
+
+# 反映
+systemctl daemon-reload
+systemctl restart docker
+systemctl status docker --no-pager
+
+# 設定値確認
+systemctl show --property=Environment docker --no-pager
 ```
 
 - 192.168.13.2:8080
@@ -255,16 +347,6 @@ Environment="NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14
   - Kubernetes の API サーバとして指定する IP アドレスを指定
 - 192.168.14.11,12,13,21,22
   - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
-
-```bash
-# 反映
-systemctl daemon-reload
-systemctl restart docker
-systemctl status docker
-
-# 設定値確認
-systemctl show --property=Environment docker
-```
 
 ```text
 <出力例>
@@ -335,7 +417,7 @@ sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/syst
 systemctl daemon-reload
 systemctl enable cri-docker.service 
 systemctl start  cri-docker.socket
-systemctl status cri-docker.socket
+systemctl status cri-docker.socket --no-pager
 ```
 
 
@@ -362,7 +444,7 @@ dnf install -y kubelet kubeadm kubectl
 systemctl daemon-reload
 systemctl start kubelet
 systemctl enable kubelet
-systemctl status kubelet
+systemctl status kubelet --no-pager
 # 起動に失敗し code=exited, status=1/FAILURE のエラーが出力されているが現時点では問題無し。
 ```
 
@@ -504,11 +586,11 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 # keepalivedとhaproxyを起動
 systemctl start keepalived
 systemctl enable keepalived
-systemctl status keepalived
+systemctl status keepalived --no-pager
 
 systemctl start haproxy
 systemctl enable haproxy
-systemctl status haproxy
+systemctl status haproxy --no-pager
 
 # NICにVIPが設定されることを確認する
 ip a
@@ -517,11 +599,11 @@ ip a
 ```test
 <出力例>
 2: ens192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
-    link/ether 00:50:56:95:1b:e6 brd ff:ff:ff:ff:ff:ff
+    link/ether 00:50:56:95:00:90 brd ff:ff:ff:ff:ff:ff
     altname enp11s0
-    inet 192.168.14.11/24 brd 192.168.14.225 scope global noprefixroute ens192 ←ControlPlane#1 のIP★
+    inet 192.168.14.11/24 brd 192.168.14.255 scope global noprefixroute ens192 ←ControlPlane#1 のIP★
        valid_lft forever preferred_lft forever
-    inet 192.168.13.19/24 scope global secondary ens192 ←VIP★
+    inet 192.168.14.10/24 scope global secondary ens192 ←VIP★
        valid_lft forever preferred_lft forever
 ```
 
@@ -611,11 +693,11 @@ cat /etc/haproxy/haproxy.cfg
 # keepalivedとhaproxyを起動
 systemctl start keepalived
 systemctl enable keepalived
-systemctl status keepalived
+systemctl status keepalived --no-pager
 
 systemctl start haproxy
 systemctl enable haproxy
-systemctl status haproxy
+systemctl status haproxy --no-pager
 ```
 
 
@@ -746,11 +828,10 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
 ```bash
 adduser portal
 passwd portal
-dnf update
 dnf group list
 dnf install -y @cinnamon-desktop-environment
 systemctl set-default graphical.target
-reboot
+shutdown -r now
 ```
 
 - portal
@@ -1092,4 +1173,27 @@ Commercial support is available at
 
 - Firefox で上記で確認した nginx の EXTERNAL-IP にアクセスし nginx の画面を表示できることを確認する。
   - ![img](img/21_Firefox_nginx.png)
+
+## Appendix: Proxyサーバ疎通許可
+
+- Proxy サーバで疎通先を制限する場合、以下ドメインへの通信を許可すること
+  - amazonaws.com
+  - pkg.dev
+  - docker.com
+  - docker.io
+  - github.com
+  - githubusercontent.com
+  - googleapis.com
+  - gstatic.com
+  - k8s.io
+  - librivox.org
+  - quay.io
+  - riken.jp
+
+## Squid での設定例
+
+```text
+acl whitelist dstdomain .amazonaws.com .pkg.dev .docker.com .docker.io .github.com .githubusercontent.com .googleapis.com .gstatic.com .k8s.io .librivox.org .quay.io .riken.jp
+http_access allow whitelist
+```
 
