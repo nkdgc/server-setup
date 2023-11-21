@@ -816,7 +816,7 @@ kubectl get node
 NAME           STATUS     ROLES           AGE     VERSION
 k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
 k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
-k8s-cp03       NotReady   <none>          87s     v1.28.3
+k8s-cp03       NotReady   control-plane   87s     v1.28.3
 k8s-worker01   NotReady   <none>          66s     v1.28.3
 k8s-worker02   NotReady   <none>          46s     v1.28.3
 ```
@@ -876,7 +876,7 @@ kubectl get node
 NAME           STATUS     ROLES           AGE     VERSION
 k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
 k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
-k8s-cp03       NotReady   <none>          87s     v1.28.3
+k8s-cp03       NotReady   control-plane   87s     v1.28.3
 k8s-worker01   NotReady   <none>          66s     v1.28.3
 k8s-worker02   NotReady   <none>          46s     v1.28.3
 ```
