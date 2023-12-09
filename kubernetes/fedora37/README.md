@@ -868,11 +868,20 @@ mkdir -p $HOME/.kube
 
 # ControlPlane#1 から kube-config を取得する
 scp root@192.168.14.11:/root/.kube/config /root/.kube/config
+```
+
+- 192.168.14.11
+  - ControlPlane#1 の IP アドレス
+
+```bash
 kubectl get node
 ```
 
+以下のように Node の一覧が表示されること。 \
+STATUS が NotReadyだが現時点では問題なし
+
 ```text
-<出力例：NotReadyだが現時点では問題なし>
+<出力例>
 NAME           STATUS     ROLES           AGE     VERSION
 k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
 k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
@@ -916,8 +925,10 @@ kubectl create -f custom-resources.yaml
 watch kubectl get pods -n calico-system
 ```
 
+全てのPodが "1/1 Running" または "2/2 Running" になるまで待機する
+
 ```text
-<出力例：全てのPodが "1/1 Running" または "2/2 Running" になるまで待機する>
+<出力例>
 NAME                                       READY   STATUS    RESTARTS   AGE
 calico-kube-controllers-697c9f4d8d-wsq6m   1/1     Running   0          3m1s
 calico-node-748gb                          1/1     Running   0          3m2s
