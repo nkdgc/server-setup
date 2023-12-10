@@ -555,7 +555,7 @@ v3.ext に設定した SAN が設定されていることを確認
 ```text
 <出力例>
             X509v3 Subject Alternative Name:
-                DNS:harbor2.home.ndeguchi.com, DNS:harbor2, IP Address:192.168.14.40
+                DNS:harbor2.home.ndeguchi.com, IP Address:192.168.14.40
 ```
 
 # CA 証明書を Trust Anchor に登録
@@ -639,7 +639,7 @@ cd ~/harbor/
 cp -p harbor.yml.tmpl harbor.yml
 ll harbor.yml*
 
-# Harbor の admin ユーザのパスワード と DB のパスワードに設定する文字列を環境変数に設定
+# admin ユーザのパスワード と DB のパスワードに設定したい文字列を環境変数に設定
 export HARBOR_PW="VMware1!"
 
 # update
@@ -817,10 +817,17 @@ source ~/.bashrc
 echo ${HARBOR_FQDN}
   # -> Harbor の FQDN が出力されること
 
+nslookup ${HARBOR_FQDN}
+  # -> Harbor の FQDN を名前解決できること（IPを引けること）
+
+# Docker の http-proxy.conf を backup
 cp -p /etc/systemd/system/docker.service.d/http-proxy.conf /etc/systemd/system/docker.service.d/http-proxy.conf.bak
 ll /etc/systemd/system/docker.service.d/http-proxy.conf*
 
+# Docker の http-proxy.conf を 修正
 sed -i -e "s/^Environment=\"NO_PROXY=\(.*\)\"/Environment=\"NO_PROXY=\1,${HARBOR_FQDN}\"/g" /etc/systemd/system/docker.service.d/http-proxy.conf
+
+# 差分確認
 diff -u /etc/systemd/system/docker.service.d/http-proxy.conf.bak /etc/systemd/system/docker.service.d/http-proxy.conf
 ```
 
@@ -832,6 +839,7 @@ diff -u /etc/systemd/system/docker.service.d/http-proxy.conf.bak /etc/systemd/sy
 ```
 
 ```bash
+# Docker 再起動
 systemctl daemon-reload
 systemctl restart docker
 systemctl status docker --no-pager
@@ -845,6 +853,7 @@ NO_PROXY の末尾に Harbor の FQDN が追記されていること。
 ```text
 <出力例>
 Environment=(省略)"NO_PROXY=(省略),*.svc,harbor2.home.ndeguchi.com"
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 ```bash
