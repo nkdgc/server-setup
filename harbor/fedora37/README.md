@@ -994,7 +994,7 @@ nginx   1/1     Running   0          74s
 ```
 
 ```bash
-k get pod nginx -o yaml | grep ${HARBOR_FQDN}
+kubectl get pod nginx -o yaml | grep ${HARBOR_FQDN}
 ```
 
 image の値が `<HarborのFQDN>/library/nginx:latest` であることを確認する。
@@ -1008,7 +1008,7 @@ image の値が `<HarborのFQDN>/library/nginx:latest` であることを確認�
 kubectl delete pod nginx
   # -> "pod "nginx" deleted" が出力されること
 
-k get pod nginx
+kubectl get pod nginx
   # pods "nginx" not found が出力されること
 ```
 
