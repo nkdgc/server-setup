@@ -111,7 +111,7 @@ source /etc/environment
 
 Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ指定を mirror リストから `riken.jp` に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
 
-```
+```bash
 cd /etc/
 
 # backup
@@ -147,7 +147,7 @@ Fedora Modular 37 - x86_64 - Updates     1.7 MB/s | 2.9 MB     00:01
 
 ## package update
 
-```
+```bash
 dnf update -y
 ```
 
@@ -219,7 +219,7 @@ systemctl status firewalld --no-pager
 
 ## Selinux を無効化
 
-```
+```bash
 cat /etc/selinux/config
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 cat /etc/selinux/config
@@ -282,7 +282,7 @@ docker run --rm hello-world
 
 docker で proxy の設定をまだ行っていないため、失敗することを確認する。
 
-```
+```text
 <出力例：以下エラーが出力されることを確認>
 Unable to find image 'hello-world:latest' locally
 docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp 3.216.34.172:443: connect: network is unreachable.
@@ -421,7 +421,7 @@ docker images
 
 以下のように Load した image が存在することを確認
 
-```
+```text
 <出力例>
 REPOSITORY                      TAG       IMAGE ID       CREATED       SIZE
 goharbor/harbor-exporter        v2.9.1    37bfd4fa26bc   5 weeks ago   105MB
@@ -560,7 +560,7 @@ v3.ext に設定した SAN が設定されていることを確認
 
 # CA 証明書を Trust Anchor に登録
 
-```
+```bash
 # get list before update
 cd
 trust list > trust_list_before.txt
@@ -582,7 +582,7 @@ diff trust_list_before.txt trust_list_after.txt
 
 Harbor の CA 証明書が差分として出力されること
 
-```
+```text
 <出力例>
 > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
 >     type: certificate
@@ -908,7 +908,7 @@ docker images | grep "nginx.*latest"
 
 作業対象サーバ：管理クライアント
 
-```
+```bash
 cd
 
 # get list before update
@@ -978,13 +978,13 @@ k get pod nginx
 
 STATUS が Running であることを確認する
 
-```
+```text
 <実行例>
 NAME    READY   STATUS    RESTARTS   AGE
 nginx   1/1     Running   0          74s
 ```
 
-```
+```bash
 k get pod nginx -o yaml | grep ${HARBOR_FQDN}
 kubectl delete pod nginx
 k get pod nginx
