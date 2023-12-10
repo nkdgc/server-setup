@@ -440,7 +440,7 @@ goharbor/prepare                v2.9.1    adb2d804c458   5 weeks ago   253MB
 
 # 環境変数設定
 
-以降の作業を効率化するため、環境変数にDNSに登録した Harbor の FQDN と IP アドレスを設定する。
+以降の作業を効率化するため、 DNS に登録した Harbor の FQDN と IP アドレスを環境変数に設定する。
 
 ```bash
 cat <<EOF >> ~/.bashrc
@@ -561,9 +561,8 @@ v3.ext に設定した SAN が設定されていることを確認
 # CA 証明書を Trust Anchor に登録
 
 ```
-cd
-
 # get list before update
+cd
 trust list > trust_list_before.txt
 ll trust_list_before.txt
 cat trust_list_before.txt
@@ -619,6 +618,7 @@ ll /etc/docker/certs.d/${HARBOR_FQDN}/
 ca.crt, cert, key 以下3ファイルが存在することを確認
 
 ```text
+<出力例>
 -rw-r--r--. 1 root root 1850 12月  9 16:25 ca.crt
 -rw-r--r--. 1 root root 1952 12月  9 16:25 harbor2.home.ndeguchi.com.cert
 -rw-------. 1 root root 3268 12月  9 16:25 harbor2.home.ndeguchi.com.key
@@ -632,7 +632,7 @@ systemctl status docker -l --no-pager
 
 # Configure the Harbor YML File
 
-```
+```bash
 cd ~/harbor/
 
 # backup
