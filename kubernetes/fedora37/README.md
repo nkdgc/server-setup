@@ -1190,6 +1190,254 @@ Commercial support is available at
 - Firefox で上記で確認した nginx の EXTERNAL-IP にアクセスし nginx の画面を表示できることを確認する。
   - ![img](img/21_Firefox_nginx.png)
 
+## Contour 導入
+
+### インストール
+
+実施対象サーバ：管理クライアント (注意)
+
+```bash
+kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
+watch kubectl get pods -n projectcontour
+```
+
+contour と envoy の pod が全て `RUNNING` になるまで待機する。
+
+```text
+<出力例>
+NAME                            READY   STATUS      RESTARTS   AGE
+contour-certgen-v1-27-0-6sdnz   0/1     Completed   0          2m4s
+contour-dd9b95958-ml5jm         1/1     Running     0          2m4s
+contour-dd9b95958-qmp94         1/1     Running     0          2m4s
+envoy-qfr7q                     2/2     Running     0          2m4s
+envoy-vj4f7                     2/2     Running     0          2m4s
+```
+
+```bash
+kubectl get svc -n projectcontour
+```
+
+`contour` と `envoy` が存在し、 `envoy` には `EXTERNAL-IP` が付与されていることを確認する。
+
+```text
+<出力例>
+NAME      TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)                      AGE
+contour   ClusterIP      10.97.142.210    <none>           8001/TCP                     8m
+envoy     LoadBalancer   10.104.197.165   192.168.14.201   80:32644/TCP,443:30833/TCP   8m
+```
+
+### DNS 登録
+
+上記で確認した `envoy` の `EXTERNAL-IP` を DNS サーバに登録する。
+本手順では以下をDNS登録したものとして手順を記載するため、適宜読み替えて実施すること。
+
+| IP | Domain Name |
+| :---: | :---: |
+| 192.168.14.201 | vmw-portal.home.ndeguchi.com |
+
+### 動作確認
+
+実施対象サーバ：管理クライアント (注意)
+
+```bash
+# 後の作業を効率化するため、 DNS サーバに登録した envoy の FQDN を環境変数に設定する。
+cat <<EOF >> ~/.bashrc
+export ENVOY_FQDN="vmw-portal.home.ndeguchi.com"
+EOF
+
+cat ~/.bashrc
+source ~/.bashrc
+echo ${ENVOY_FQDN}
+  # -> 上記で設定した値が出力されること
+
+echo ${HARBOR_FQDN}
+  # -> Harbor の FQDN が出力されること
+
+cd
+```
+
+```yaml
+# httpproxy の動作確認を行うための yaml ファイルを作成
+cat <<EOF > httpproxy-test.yaml
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: httpproxy-test
+spec:
+  virtualhost:
+    fqdn: ${ENVOY_FQDN}
+  routes:
+    - conditions:
+      - prefix: /nginx-01/
+      services:
+        - name: nginx-01
+          port: 80
+      pathRewritePolicy:
+        replacePrefix:
+        - replacement: /
+    - conditions:
+      - prefix: /nginx-02/
+      services:
+        - name: nginx-02
+          port: 80
+      pathRewritePolicy:
+        replacePrefix:
+        - replacement: /
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-01
+  name: nginx-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-01
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: nginx-01
+    spec:
+      containers:
+      - image: ${HARBOR_FQDN}/library/nginx:latest
+        name: nginx
+        resources: {}
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - sh
+                - -c
+                - "echo '<h1>nginx-01</h1>' > /usr/share/nginx/html/index.html"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx-01
+  name: nginx-01
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: nginx-01
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-02
+  name: nginx-02
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-02
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: nginx-02
+    spec:
+      containers:
+      - image: ${HARBOR_FQDN}/library/nginx:latest
+        name: nginx
+        resources: {}
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - sh
+                - -c
+                - "echo '<h1>nginx-02</h1>' > /usr/share/nginx/html/index.html"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx-02
+  name: nginx-02
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: nginx-02
+  type: ClusterIP
+EOF
+```
+
+```bash
+cat httpproxy-test.yaml
+kubectl apply -f httpproxy-test.yaml
+kubectl get svc | grep -e "NAME" -e "nginx-"
+```
+
+`nginx-01` と `nginx-02` の Service が存在すること
+
+```text
+<出力例>
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+nginx-01     ClusterIP   10.104.107.221   <none>        80/TCP    71s
+nginx-02     ClusterIP   10.105.14.7      <none>        80/TCP    70s
+```
+
+```bash
+kubectl get pod | grep -e "NAME" -e "nginx-"
+```
+
+`nginx-01-xxxx` と `nginx-02-xxxx` の Pod が存在すること
+
+```text
+<出力例>
+NAME                        READY   STATUS    RESTARTS      AGE
+nginx-01-cb5d99757-vb4j7    1/1     Running   0             2m18s
+nginx-02-57dc7974b9-9pds8   1/1     Running   0             2m17s
+```
+
+```bash
+kubectl get httpproxy
+```
+
+`httpproxy-test` の httpproxy が存在し、 `STATUS` が `valid` であること。
+
+```text
+<出力例>
+NAME             FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
+httpproxy-test   vmw-portal.home.ndeguchi.com                valid    Valid HTTPProxy
+```
+
+```bash
+# アクセス確認
+curl --noproxy "*" http://${ENVOY_FQDN}/nginx-01/
+  # -> "<h1>nginx-01</h1>" が出力されることを確認
+
+curl --noproxy "*" http://${ENVOY_FQDN}/nginx-02/
+  # -> "<h1>nginx-02</h1>" が出力されることを確認
+```
+
+- 管理クライアントの GUI からも httpproxy 経由で nginx にアクセスできることを確認する。
+  - GUI でログインして Firefox の Proxy 設定を開き `プロキシーなしで接続` に Envoy の FQDN を追加する。
+    - ![img](img/30_httpproxy_test_firefox_proxy_settings.png)
+  - `http://<envoyのFQDN>/nginx-01/` にアクセスし `nginx-01` が表示されることを確認する
+    - ![img](img/31_httpproxy_test_nginx_01.png)
+  - `http://<envoyのFQDN>/nginx-02/` にアクセスし `nginx-02` が表示されることを確認する
+    - ![img](img/32_httpproxy_test_nginx_02.png)
+
+
+```bash
+# 削除
+kubectl delete -f httpproxy-test.yaml
+```
+
 ## Appendix: Proxyサーバ疎通許可
 
 - Proxy サーバで疎通先を制限する場合、以下ドメインへの通信を許可すること
@@ -1205,11 +1453,13 @@ Commercial support is available at
   - librivox.org
   - quay.io
   - riken.jp
+  - projectcontour.io
+  - ghcr.io
 
 ## Squid での設定例
 
 ```text
-acl whitelist dstdomain .amazonaws.com .pkg.dev .docker.com .docker.io .github.com .githubusercontent.com .googleapis.com .gstatic.com .k8s.io .librivox.org .quay.io .riken.jp
+acl whitelist dstdomain .amazonaws.com .pkg.dev .docker.com .docker.io .github.com .githubusercontent.com .googleapis.com .gstatic.com .k8s.io .librivox.org .quay.io .riken.jp .projectcontour.io ghcr.io
 http_access allow whitelist
 ```
 
