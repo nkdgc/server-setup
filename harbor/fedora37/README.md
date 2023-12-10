@@ -857,10 +857,13 @@ Environment=(省略)"NO_PROXY=(省略),*.svc,harbor2.home.ndeguchi.com"
 ```
 
 ```bash
+# Harbor の CA 証明書を取得
 mkdir -p /etc/docker/certs.d/${HARBOR_FQDN}
 cd /etc/docker/certs.d/${HARBOR_FQDN}
 scp root@${HARBOR_FQDN}:/root/ca.crt .
 ll
+
+# Harbor にログインできることを確認
 docker login ${HARBOR_FQDN} --username admin
 ```
 
@@ -876,9 +879,8 @@ https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 Login Succeeded
 ```
 
-Harbor から image を pull できることを確認する。
-
 ```bash
+# Harbor から image を pull できることを確認する。
 docker pull ${HARBOR_FQDN}/library/nginx:latest
 ```
 
@@ -898,15 +900,17 @@ harbor2.home.ndeguchi.com/library/nginx:latest
 ```
 
 ```bash
+# pull したイメージが存在することを確認する
 docker images | grep "nginx.*latest"
 ```
 
 ```text
-<出力例: pull したイメージが存在することを確認する>
+<出力例>
 harbor2.home.ndeguchi.com/library/nginx   latest     a6bd71f48f68   2 weeks ago     187MB
 ```
 
 ```bash
+# pull したイメージを削除する
 docker rmi ${HARBOR_FQDN}/library/nginx:latest
 docker images | grep "nginx.*latest"
   # -> イメージが存在しないこと(何も出力されないこと)を確認する
@@ -918,21 +922,14 @@ docker images | grep "nginx.*latest"
 作業対象サーバ：管理クライアント
 
 ```bash
-cd
-
 # get list before update
+cd
 trust list > trust_list_before.txt
 ll trust_list_before.txt
 cat trust_list_before.txt
 
-# get CA cert
-scp root@192.168.14.40:/root/ca.crt /etc/pki/ca-trust/source/anchors/
-```
-
-- 192.168.14.40
-  - Harbor の IP アドレス
-
-```bash
+# copy CA cert
+cp /etc/docker/certs.d/${HARBOR_FQDN}/ca.crt /etc/pki/ca-trust/source/anchors/
 ll /etc/pki/ca-trust/source/anchors/
 update-ca-trust
 
@@ -969,10 +966,10 @@ shutdown -r now
 - GUI でログインして Firefox の Proxy 設定を開き `プロキシーなしで接続` に Harbor の FQDN を追加する。
   - ![img](img/30_firefox_proxy_settings.png)
 - Firefox で Harbor の FQDN にアクセスしログインできることを確認する。
-  - ID: admin, PW: harbor.ymlで指定したパスワード
+  - ID: `admin`, PW: harbor.ymlで指定したパスワード
   - ![img](img/10_Harbor_login_page.png)
   - ![img](img/11_Harbor_top_page.png)
-- library/nginx:latest が push できていることを確認する
+- library/nginx:latest が存在することを確認する
   - ![img](img/20_pushed_image.png)
 
 
@@ -981,11 +978,14 @@ shutdown -r now
 作業対象サーバ：管理クライアント
 
 ```bash
+# Harbor で保持する nginx を実行
 kubectl run nginx --image=${HARBOR_FQDN}/library/nginx:latest
-k get pod nginx
+  # -> "pod/nginx created" が出力されること
+
+watch kubectl get pod nginx
 ```
 
-STATUS が Running であることを確認する
+`STATUS` が `Running` になるまで待機
 
 ```text
 <実行例>
@@ -995,7 +995,20 @@ nginx   1/1     Running   0          74s
 
 ```bash
 k get pod nginx -o yaml | grep ${HARBOR_FQDN}
+```
+
+image の値が `<HarborのFQDN>/library/nginx:latest` であることを確認する。
+
+```text
+  - image: harbor2.home.ndeguchi.com/library/nginx:latest
+```
+
+```bash
+# Pod 削除
 kubectl delete pod nginx
+  # -> "pod "nginx" deleted" が出力されること
+
 k get pod nginx
+  # pods "nginx" not found が出力されること
 ```
 
