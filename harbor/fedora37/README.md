@@ -23,13 +23,13 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 - コンソールから root ユーザでログインし ホスト名 / IP アドレス / Gateway / DNS を変更する。本手順では以下を前提としてコマンドを記載するため、環境に応じて適宜読み替えて実施すること。
 
-  | \# | ホスト名 | IPアドレス |
-  | :---: | :---: | :---: |
-  | Harbor | harbor2 | 192.168.14.40 |
+  | ホスト名 | IPアドレス |
+  | :---: | :---: |
+  | harbor2 | 192.168.14.40 |
 
 > Note \
 > 本手順を検証した環境では `harbor` というホスト名のサーバが既に存在しているため本手順で構築する Harbor のホスト名は `harbor2` とするが、
-> 特に重複等の理由が無ければホスト名は `harbor` で問題無い。
+> 特に重複等の理由が無ければホスト名は `harbor` でも問題無い。
   
   ```bash
   # コマンド例
@@ -73,8 +73,6 @@ Address: 192.168.14.40
 
 ## dnfリポジトリキャッシュ更新無効化
 
-実施対象サーバ：6台全て
-
 ```bash
 systemctl stop dnf-makecache.timer
 systemctl disable dnf-makecache.timer
@@ -101,15 +99,17 @@ source /etc/environment
 - 192.168.13.2:8080
   - Proxy サーバのIP・ポート番号を指定
 - 192.168.14.10
-  - Kubernetes の API サーバとして指定する IP アドレスを指定
+  - Kubernetes の API サーバの IP アドレスを指定
 - 192.168.14.11,12,13,21,22
   - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
+- 192.168.14.0/24
+  - ControlPlane#1-3, WorkerNode#1-2, Harbor の IP アドレスの NW アドレスを指定
 - harbor2.home.ndeguchi.com
   - DNS に登録した Harbor の FQDN
 
 ## dnf(yum) のリポジトリ指定
 
-Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ指定を mirror リストから riken.jp に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
+Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ指定を mirror リストから `riken.jp` に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
 
 ```
 cd /etc/
@@ -128,7 +128,7 @@ sed -i -e "s/^metalink=/#metalink=/g" ./*
 sed -i -e "s,^#baseurl=http://download.example/pub/fedora/linux,baseurl=https://ftp.riken.jp/Linux/fedora,g" ./*
 sed -i -e "s/^enabled=1/enabled=0/g" fedora-cisco-openh264.repo
 
-# 差分出力（TeratermLogに記録するだけ。中身を読む必要はない）
+# 差分出力（TerminalLogに記録するだけ。中身を読む必要はない）
 diff -u ../yum.repos.d.bak/ .
 
 # 動作確認
@@ -152,9 +152,9 @@ dnf update -y
 ```
 
 
-## (OPTIONAL) tmux,vim,bash,dnf-cache
+## (OPTIONAL) tmux,vim,bash インストール/設定
 
-好みの設定なので実施しなくても問題無し。
+好みの問題なので実施しなくても問題無し。
 
 ```bash
 # tmux インストール
@@ -309,6 +309,8 @@ EOF
   - Kubernetes の API サーバとして指定する IP アドレスを指定
 - 192.168.14.11,12,13,21,22
   - ControlPlane#1-3, WorkerNode#1-2 の IP アドレスを指定
+- 192.168.14.0/24
+  - ControlPlane#1-3, WorkerNode#1-2, Harbor の IP アドレスの NW アドレスを指定
 - harbor2.home.ndeguchi.com
   - DNS に登録した Harbor の FQDN
 
@@ -332,10 +334,11 @@ Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:
 docker run --rm hello-world
 ```
 
-docker で proxy の設定を行ったことによりインターネットからコンテナイメージを取得出来るようになり正常に実行できることを確認する。
+docker で proxy の設定を行ったことにより、 proxy 経由で dockerhub (インターネット上) からコンテナイメージを取得出来るようになり正常に実行できることを確認する。
+正常に実行できると以下のように `Hello from Docker!` が出力される。
 
 ```text
-<出力例: 以下のように hello-world コンテナの実行結果が出力されることを確認する>
+<出力例>
 Unable to find image 'hello-world:latest' locally
 latest: Pulling from library/hello-world
 719385e32844: Pull complete
