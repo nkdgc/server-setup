@@ -1006,9 +1006,9 @@ image の値が `<HarborのFQDN>/library/nginx:latest` であることを確認�
 ```bash
 # Pod 削除
 kubectl delete pod nginx
-  # -> "pod "nginx" deleted" が出力されること
+  # -> pod "nginx" deleted が出力されること
 
 kubectl get pod nginx
-  # pods "nginx" not found が出力されること
+  # -> pods "nginx" not found が出力されること
 ```
 
