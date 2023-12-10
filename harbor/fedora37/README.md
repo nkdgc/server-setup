@@ -800,7 +800,7 @@ latest: digest: sha256:3c4c1f42a89e343c7b050c5e5d6f670a0e0b82e70e0e7d023f10092a0
 
 # 他のサーバへの証明書配置・Proxy設定・動作確認
 
-作業対象サーバ：Kubernetes の ControlPlane, WorkerNode, 管理クライアントなど、Harbor にアクセスする全てのサーバで以下作業を実施する。
+作業対象サーバ：Kubernetes の ControlPlane, WorkerNode, 管理クライアントなど、Harbor にアクセスする全てのサーバで以下作業を実施する。 **(注意)**
 
 ```bash
 # Harbor の FQDN を環境変数に設定
@@ -919,7 +919,7 @@ docker images | grep "nginx.*latest"
 
 # 管理コンソールで Harbor の CA 証明書を Trust Anchor に登録
 
-作業対象サーバ：管理クライアント
+作業対象サーバ：管理クライアント **(注意)**
 
 ```bash
 # get list before update
@@ -961,7 +961,7 @@ shutdown -r now
 
 # 管理コンソールからブラウザアクセスできることを確認
 
-作業対象サーバ：管理クライアント
+作業対象サーバ：管理クライアント **(注意)**
 
 - GUI でログインして Firefox の Proxy 設定を開き `プロキシーなしで接続` に Harbor の FQDN を追加する。
   - ![img](img/30_firefox_proxy_settings.png)
@@ -975,7 +975,7 @@ shutdown -r now
 
 # Kubernetes での動作確認
 
-作業対象サーバ：管理クライアント
+作業対象サーバ：管理クライアント **(注意)**
 
 ```bash
 # Harbor で保持する nginx を実行
