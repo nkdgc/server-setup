@@ -459,10 +459,10 @@ cat ~/.bashrc
 source ~/.bashrc
 
 echo ${HARBOR_FQDN}
-  # 上で設定した値が出力されること
+  # -> 上で設定した値が出力されること
 
 echo ${HARBOR_IP}
-  # 上で設定した値が出力されること
+  # -> 上で設定した値が出力されること
 ```
 
 # Generate a Certificate Authority Certificate
@@ -473,7 +473,7 @@ cd
 openssl genrsa -out ca.key 4096
 
 ll ca.key
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 
 # 2. Generate the CA certificate.
 openssl req -x509 -new -nodes -sha512 -days 3650 \
@@ -481,11 +481,11 @@ openssl req -x509 -new -nodes -sha512 -days 3650 \
  -key ca.key \
  -out ca.crt
   
-  # 以下のログが複数行出力されるが問題無し
-  # "req: No value provided for subject name attribute "XXX", skipped"
+  # -> 以下のログが複数行出力されるが問題無し
+  #    "req: No value provided for subject name attribute "XXX", skipped"
 
 ll ca.crt
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 ```
 
 # Generate a Server Certificate
@@ -495,7 +495,7 @@ ll ca.crt
 openssl genrsa -out ${HARBOR_FQDN}.key 4096
 
 ll ${HARBOR_FQDN}.key
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 
 # 2. Generate a certificate signing request (CSR).
 openssl req -sha512 -new \
@@ -503,11 +503,11 @@ openssl req -sha512 -new \
     -key ${HARBOR_FQDN}.key \
     -out ${HARBOR_FQDN}.csr
 
-  # 以下のログが複数行出力されるが問題無し
-  # "req: No value provided for subject name attribute "XXX", skipped"
+  # -> 以下のログが複数行出力されるが問題無し
+  #    "req: No value provided for subject name attribute "XXX", skipped"
 
 ll ${HARBOR_FQDN}.csr
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 
 # 3. Generate an x509 v3 extension file.
 cat > v3.ext <<-EOF
@@ -532,7 +532,7 @@ openssl x509 -req -sha512 -days 3650 \
     -out ${HARBOR_FQDN}.crt
 
 ll ${HARBOR_FQDN}.crt
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 
 openssl x509 -text -noout -in ${HARBOR_FQDN}.crt
 openssl x509 -text -noout -in ${HARBOR_FQDN}.crt | grep -e "Issuer:" -e "Subject:"
@@ -604,7 +604,7 @@ ll /data/cert/
 # 2. Convert yourdomain.com.crt to yourdomain.com.cert, for use by Docker.
 openssl x509 -inform PEM -in ${HARBOR_FQDN}.crt -out ${HARBOR_FQDN}.cert
 ll ${HARBOR_FQDN}.cert
-  # ファイルが存在することを確認
+  # -> ファイルが存在することを確認
 
 # 3. Copy the server certificate, key and CA files into the Docker certificates folder on the Harbor host.
 #    You must create the appropriate folders first.
