@@ -157,6 +157,8 @@ bind -r H resize-pane -L 1
 bind -r J resize-pane -D 1
 bind -r K resize-pane -U 1
 bind -r L resize-pane -R 1
+bind B setw synchronize-panes on
+bind b setw synchronize-panes off
 EOF
 
 # .vimrc
