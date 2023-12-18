@@ -367,7 +367,7 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 
-# Docker compose 確認
+## Docker compose 確認
 
 docker compose を実行可能であることを確認する
 
@@ -382,7 +382,7 @@ docker compose version
 Docker Compose version v2.21.0
 ```
 
-# openssl 確認
+## openssl 確認
 
 openssl コマンドがインストールされていることを確認する
 
@@ -397,7 +397,7 @@ openssl version
 OpenSSL 3.0.9 30 May 2023 (Library: OpenSSL 3.0.9 30 May 2023)
 ```
 
-# Download and Unpack the Installer
+## Download and Unpack the Installer
 
 ```bash
 cd
@@ -407,7 +407,7 @@ tar zxvf harbor-offline-installer-v2.9.1.tgz
 ll harbor/
 ```
 
-# Load Images
+## Load Images
 
 ```bash
 cd ~/harbor/
@@ -438,7 +438,7 @@ goharbor/harbor-db              v2.9.1    69606d285be1   5 weeks ago   358MB
 goharbor/prepare                v2.9.1    adb2d804c458   5 weeks ago   253MB
 ```
 
-# 環境変数設定
+## 環境変数設定
 
 以降の作業を効率化するため、 DNS に登録した Harbor の FQDN と IP アドレスを環境変数に設定する。
 
@@ -465,7 +465,7 @@ echo ${HARBOR_IP}
   # -> 上で設定した値が出力されること
 ```
 
-# Generate a Certificate Authority Certificate
+## Generate a Certificate Authority Certificate
 
 ```bash
 # 1. Generate a CA certificate private key.
@@ -488,7 +488,7 @@ ll ca.crt
   # -> ファイルが存在することを確認
 ```
 
-# Generate a Server Certificate
+## Generate a Server Certificate
 
 ```bash
 # 1. Generate a private key.
@@ -558,7 +558,7 @@ v3.ext に設定した SAN が設定されていることを確認
                 DNS:harbor2.home.ndeguchi.com, IP Address:192.168.14.40
 ```
 
-# CA 証明書を Trust Anchor に登録
+## CA 証明書を Trust Anchor に登録
 
 ```bash
 # get list before update
@@ -592,7 +592,7 @@ Harbor の CA 証明書が差分として出力されること
 >
 ```
 
-# Provide the Certificates to Harbor and Docker
+## Provide the Certificates to Harbor and Docker
 
 ```bash
 # 1. Copy the server certificate and key into the certficates folder on your Harbor host.
@@ -630,7 +630,7 @@ systemctl restart docker
 systemctl status docker -l --no-pager
 ```
 
-# Configure the Harbor YML File
+## Configure the Harbor YML File
 
 ```bash
 cd ~/harbor/
@@ -686,7 +686,7 @@ diff -u harbor.yml.tmpl harbor.yml
 +  password: VMware1!
 ```
 
-# Deploy or Reconfigure Harbor
+## Deploy or Reconfigure Harbor
 
 ```bash
 # Run the prepare script to enable HTTPS.
@@ -752,7 +752,7 @@ c1e9a3ae15ae   goharbor/redis-photon:v2.9.1         "redis-server /etc/r…"   5
 88c0286d6024   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   53 seconds ago   Up 51 seconds (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
 ```
 
-# localhost の Docker からアクセス確認
+## localhost の Docker からアクセス確認
 
 Harbor を構築した Fedora の Docker から Harbor にアクセスできることを確認する
 
@@ -798,7 +798,7 @@ f5525891d9e9: Pushed
 latest: digest: sha256:3c4c1f42a89e343c7b050c5e5d6f670a0e0b82e70e0e7d023f10092a04bbb5a7 size: 1778
 ```
 
-# 他のサーバへの証明書配置・Proxy設定・動作確認
+## 他のサーバへの証明書配置・Proxy設定・動作確認
 
 作業対象サーバ：Kubernetes の ControlPlane, WorkerNode, 管理クライアントなど、Harbor にアクセスする全てのサーバで以下作業を実施する。 **(注意)**
 
@@ -917,7 +917,7 @@ docker images | grep "nginx.*latest"
 ```
 
 
-# 管理クライアントで Harbor の CA 証明書を Trust Anchor に登録
+## 管理クライアントで Harbor の CA 証明書を Trust Anchor に登録
 
 作業対象サーバ：管理クライアント **(注意)**
 
@@ -959,7 +959,7 @@ Harbor の CA 証明書が差分として出力されること
 shutdown -r now
 ```
 
-# 管理クライアントからブラウザアクセスできることを確認
+## 管理クライアントからブラウザアクセスできることを確認
 
 作業対象サーバ：管理クライアント **(注意)**
 
@@ -973,7 +973,7 @@ shutdown -r now
   - ![img](img/20_pushed_image.png)
 
 
-# Kubernetes での動作確認
+## Kubernetes での動作確認
 
 作業対象サーバ：管理クライアント **(注意)**
 
@@ -1010,5 +1010,89 @@ kubectl delete pod nginx
 
 kubectl get pod nginx
   # -> pods "nginx" not found が出力されること
+```
+
+## 自動起動設定
+
+```bash
+cat <<EOF > /etc/rc.local
+#!/bin/sh
+cd /root/harbor/
+docker compose up -d
+EOF
+
+chmod 755 /etc/rc.local
+
+ls -l /etc/rc.local
+cat /etc/rc.local
+/etc/rc.local
+```
+
+以下のように docker compose up コマンドの実行結果が出力されること
+
+```text
+<出力例>
+[+] Running 9/9
+ ✔ Container harbor-log         Running   0.0s
+ ✔ Container registry           Running   0.0s
+ ✔ Container harbor-db          Running   0.0s
+ ✔ Container registryctl        Running   0.0s
+ ✔ Container redis              Running   0.0s
+ ✔ Container harbor-portal      Running   0.0s
+ ✔ Container harbor-core        Started   0.0s
+ ✔ Container nginx              Started   0.0s
+ ✔ Container harbor-jobservice  Started   0.0s
+```
+
+```bash
+cat <<EOF > /etc/systemd/system/rc-local.service
+[Unit]
+Description=/etc/rc.local
+
+[Service]
+ExecStart=/etc/rc.local
+Restart=no
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+ls -l /etc/systemd/system/rc-local.service
+cat /etc/systemd/system/rc-local.service
+
+systemctl enable rc-local.service
+
+```
+
+以下が出力されること
+
+```text
+<出力例>
+Created symlink /etc/systemd/system/multi-user.target.wants/rc-local.service → /etc/systemd/system/rc-local.service.
+```
+
+```bash
+# 再起動
+shutodnw -r now
+
+# 再起動後、Harborが起動していることを確認
+docker ps
+```
+
+以下のように Harbor のコンテナが 9 個存在し、STATUS が UP かつ healthy であること。
+
+```text
+<出力例>
+CONTAINER ID   IMAGE                                COMMAND                   CREATED        STATUS                        PORTS                                                                            NAMES
+27bdc5166218   goharbor/harbor-jobservice:v2.9.1    "/harbor/entrypoint.…"   26 hours ago   Up About a minute (healthy)                                                                                    harbor-jobservice
+9c6e7ae9c3ce   goharbor/nginx-photon:v2.9.1         "nginx -g 'daemon of…"   26 hours ago   Up About a minute (healthy)   0.0.0.0:80->8080/tcp, :::80->8080/tcp, 0.0.0.0:443->8443/tcp, :::443->8443/tcp   nginx
+6e03e6274722   goharbor/harbor-core:v2.9.1          "/harbor/entrypoint.…"   26 hours ago   Up About a minute (healthy)                                                                                    harbor-core
+65e81279d755   goharbor/redis-photon:v2.9.1         "redis-server /etc/r…"   26 hours ago   Up About a minute (healthy)                                                                                    redis
+6ee00c20422f   goharbor/harbor-registryctl:v2.9.1   "/home/harbor/start.…"   26 hours ago   Up About a minute (healthy)                                                                                    registryctl
+68f3a70a72d9   goharbor/harbor-db:v2.9.1            "/docker-entrypoint.…"   26 hours ago   Up About a minute (healthy)                                                                                    harbor-db
+dc288227ad76   goharbor/registry-photon:v2.9.1      "/home/harbor/entryp…"   26 hours ago   Up About a minute (healthy)                                                                                    registry
+e71b25074d1f   goharbor/harbor-portal:v2.9.1        "nginx -g 'daemon of…"   26 hours ago   Up About a minute (healthy)                                                                                    harbor-portal
+370b388b421f   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   26 hours ago   Up About a minute (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
 ```
 
