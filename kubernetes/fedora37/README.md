@@ -318,7 +318,7 @@ docker で proxy の設定をまだ行っていないため、失敗すること
 ```
 <出力例：以下エラーが出力されることを確認>
 Unable to find image 'hello-world:latest' locally
-docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp 3.216.34.172:443: connect: network is unreachable.
+docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io: Temporary failure in name resolution.
 See 'docker run --help'.
 ```
 
@@ -1194,6 +1194,8 @@ Commercial support is available at
 
 ## Contour 導入
 
+※注意※ Harbor を構築した後に実施すること
+
 ### インストール
 
 実施対象サーバ：管理クライアント (注意)
@@ -1203,7 +1205,7 @@ kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
 watch kubectl get pods -n projectcontour
 ```
 
-contour と envoy の pod が全て `RUNNING` になるまで待機する。
+contour-certgen の pod が `Completed` 、それ以外の contour と envoy の pod が全て `RUNNING` になるまで待機する。
 
 ```text
 <出力例>
@@ -1237,7 +1239,8 @@ envoy     LoadBalancer   10.104.197.165   192.168.14.201   80:32644/TCP,443:3083
 | :---: | :---: |
 | 192.168.14.201 | vmw-portal.home.ndeguchi.com |
 
-### 動作確認
+
+### /etc/hosts 登録
 
 実施対象サーバ：管理クライアント (注意)
 
@@ -1245,6 +1248,7 @@ envoy     LoadBalancer   10.104.197.165   192.168.14.201   80:32644/TCP,443:3083
 # 後の作業を効率化するため、 DNS サーバに登録した envoy の FQDN を環境変数に設定する。
 cat <<EOF >> ~/.bashrc
 export ENVOY_FQDN="vmw-portal.home.ndeguchi.com"
+export ENVOY_IP="192.168.14.201"
 EOF
 
 cat ~/.bashrc
@@ -1252,6 +1256,37 @@ source ~/.bashrc
 echo ${ENVOY_FQDN}
   # -> 上記で設定した値が出力されること
 
+echo ${ENVOY_IP}
+  # -> 上記で設定した値が出力されること
+
+nslookup ${ENVOY_FQDN}
+  # -> /etc/hosts 登録前のため名前解決ができないことを確認する
+
+cat <<EOF >> /etc/hosts
+${ENVOY_IP} ${ENVOY_FQDN}
+EOF
+
+cat /etc/hosts
+
+nslookup ${ENVOY_FQDN}
+```
+
+/etc/hosts 登録後のため名前解決ができないことを確認する
+
+```text
+<出力例>
+Server:         127.0.0.53
+Address:        127.0.0.53#53
+
+Name:   vmw-portal.home.ndeguchi.com
+Address: 192.168.14.201
+```
+
+### 動作確認
+
+実施対象サーバ：管理クライアント (注意)
+
+```bash
 echo ${HARBOR_FQDN}
   # -> Harbor の FQDN が出力されること
 

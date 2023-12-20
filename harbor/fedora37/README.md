@@ -54,18 +54,55 @@ Harbor の FQDN を決定し、DNS サーバにレコードを登録する。 \
 | FQDN | harbor2.home.ndeguchi.com |
 | IP   | 192.168.14.40 |
 
-Harbor を構築する Fedora (上の手順で構築したFedora) から名前解決が出来ることを確認する。
+# 環境変数設定
+
+以降の作業を効率化するため、 Harbor の FQDN と IP アドレスを環境変数に設定する。
 
 ```bash
-nslookup harbor2.home.ndeguchi.com
+cat <<EOF >> ~/.bashrc
+export HARBOR_FQDN="harbor2.home.ndeguchi.com"
+export HARBOR_IP="192.168.14.40"
+EOF
 ```
+
+- harbor2.home.ndeguchi.com
+  - Harbor の FQDN
+- 192.168.14.40
+  - Harbor の IP アドレス
+
+```bash
+cat ~/.bashrc
+source ~/.bashrc
+
+echo ${HARBOR_FQDN}
+  # -> 上で設定した値が出力されること
+
+echo ${HARBOR_IP}
+  # -> 上で設定した値が出力されること
+```
+
+## /etc/hosts 追記
+
+```bash
+nslookup ${HARBOR_FQDN}
+  # -> /etc/hosts 登録前なので名前解決に失敗することを確認
+
+cat <<EOF >> /etc/hosts
+${HARBOR_IP} ${HARBOR_FQDN}
+EOF
+
+cat /etc/hosts
+
+nslookup ${HARBOR_FQDN}
+```
+
+名前解決に成功し Harbor の IP アドレスが出力されることを確認
 
 ```text
 <出力例>
 Server:         127.0.0.53
 Address:        127.0.0.53#53
 
-Non-authoritative answer:
 Name:   harbor2.home.ndeguchi.com
 Address: 192.168.14.40
 ```
@@ -287,7 +324,7 @@ docker で proxy の設定をまだ行っていないため、失敗すること
 ```text
 <出力例：以下エラーが出力されることを確認>
 Unable to find image 'hello-world:latest' locally
-docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp 3.216.34.172:443: connect: network is unreachable.
+docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io: Temporary failure in name resolution.
 See 'docker run --help'.
 ```
 
@@ -438,33 +475,6 @@ goharbor/harbor-core            v2.9.1    0a3a7953409c   5 weeks ago   166MB
 goharbor/harbor-portal          v2.9.1    345284db8ca1   5 weeks ago   161MB
 goharbor/harbor-db              v2.9.1    69606d285be1   5 weeks ago   358MB
 goharbor/prepare                v2.9.1    adb2d804c458   5 weeks ago   253MB
-```
-
-# 環境変数設定
-
-以降の作業を効率化するため、 DNS に登録した Harbor の FQDN と IP アドレスを環境変数に設定する。
-
-```bash
-cat <<EOF >> ~/.bashrc
-export HARBOR_FQDN="harbor2.home.ndeguchi.com"
-export HARBOR_IP="192.168.14.40"
-EOF
-```
-
-- harbor2.home.ndeguchi.com
-  - DNS サーバに登録した Harbor の FQDN
-- 192.168.14.40
-  - DNS サーバに登録した Harbor の IP アドレス
-
-```bash
-cat ~/.bashrc
-source ~/.bashrc
-
-echo ${HARBOR_FQDN}
-  # -> 上で設定した値が出力されること
-
-echo ${HARBOR_IP}
-  # -> 上で設定した値が出力されること
 ```
 
 # Generate a Certificate Authority Certificate
@@ -808,20 +818,47 @@ latest: digest: sha256:3c4c1f42a89e343c7b050c5e5d6f670a0e0b82e70e0e7d023f10092a0
 # Harbor の FQDN を環境変数に設定
 cat <<EOF >> ~/.bashrc
 export HARBOR_FQDN="harbor2.home.ndeguchi.com"
+export HARBOR_IP="192.168.14.40"
 EOF
 ```
 
 - harbor2.home.ndeguchi.com
   - Harbor の FQDN
+- 192.168.14.10
+  - Harbor の IP アドレス
 
 ```bash
 source ~/.bashrc
 echo ${HARBOR_FQDN}
   # -> Harbor の FQDN が出力されること
 
-nslookup ${HARBOR_FQDN}
-  # -> Harbor の FQDN を名前解決できること（IPを引けること）
+echo ${HARBOR_IP}
+  # -> Harbor の IP アドレスが出力されること
 
+nslookup ${HARBOR_FQDN}
+  # -> /etc/hosts 登録前なので名前解決に失敗することを確認
+
+cat <<EOF >> /etc/hosts
+${HARBOR_IP} ${HARBOR_FQDN}
+EOF
+
+cat /etc/hosts
+
+nslookup ${HARBOR_FQDN}
+```
+
+名前解決に成功し Harbor の IP アドレスが出力されることを確認
+
+```text
+<出力例>
+Server:         127.0.0.53
+Address:        127.0.0.53#53
+
+Name:   harbor2.home.ndeguchi.com
+Address: 192.168.14.40
+```
+
+```bash
 # Docker の http-proxy.conf を backup
 cp -p /etc/systemd/system/docker.service.d/http-proxy.conf /etc/systemd/system/docker.service.d/http-proxy.conf.bak
 ll /etc/systemd/system/docker.service.d/http-proxy.conf*
