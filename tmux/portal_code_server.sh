@@ -81,8 +81,16 @@ tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/history" Enter
 tmux send-keys -t ${session}:${page} "poetry install" Enter
 tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8015 --host=0.0.0.0" Enter
 
-# 8: git
+# 8: BE-NSX_LB
 page=8
+tmux new-window -t ${session}
+tmux rename-window -t ${session}:${page} "BE-NSX_LB"
+tmux send-keys -t ${session}:${page} "cd /home/coder/cloud-hub/be/nsx_lb" Enter
+tmux send-keys -t ${session}:${page} "poetry install" Enter
+tmux send-keys -t ${session}:${page} "poetry run python3 -m uvicorn app.main:app --reload --port 8016 --host=0.0.0.0" Enter
+
+# 9: git
+page=9
 tmux new-window -t ${session}
 tmux rename-window -t ${session}:${page} "git"
 
