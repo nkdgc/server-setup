@@ -210,6 +210,13 @@ for yaml in $(find . -type f -name "*.yaml"); do
   sed -i -e "s/vmw-portal.home.ndeguchi.com/${ENVOY_FQDN}/g" ${yaml}
 done
 
+# VM Remote Console User 設定
+echo -n "administrator@vsphere.local" | base64
+echo -n "VMware1!" | base64
+
+vim be-vcenter-vm.yaml
+  # -> VCENTER_USER_FOR_VMRC, VCENTER_PASSWORD_FOR_VMRC に指定
+
 # 差分確認
 diff -ru ../cloud-hub-manifests.bak .
 
