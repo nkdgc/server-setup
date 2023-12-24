@@ -25,6 +25,8 @@ df -h
 
 ## Harbor 自動起動設定
 
+作業実施サーバ: Harbor
+
 ```bash
 cat <<EOF > /etc/rc.local
 #!/usr/bin/bash
