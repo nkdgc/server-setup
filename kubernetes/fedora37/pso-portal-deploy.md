@@ -1,5 +1,75 @@
 # PSO Portal Deploy
 
+## ディスク拡張
+
+作業実施サーバ: ControlPlane, WorkerNode, 管理クライアント, Harbor など、Fedora37 で構築した全てのサーバ
+
+```bash
+# ディスクサイズ拡張
+df -h
+  | ファイルシス            サイズ  使用  残り 使用% マウント位置
+  | (...)
+  | /dev/mapper/fedora-root    15G   15G   20K  100% /
+  | (...)
+
+lvextend -An --extents +100%FREE /dev/mapper/fedora-root
+
+xfs_growfs /dev/mapper/fedora-root
+
+df -h
+  | ファイルシス            サイズ  使用  残り 使用% マウント位置
+  | (...)
+  | /dev/mapper/fedora-root   159G   16G  143G   11% /
+  | (...)
+```
+
+## Harbor 自動起動設定
+
+```bash
+cat <<EOF > /etc/rc.local
+#!/usr/bin/bash
+cd /root/harbor
+docker compose up -d
+EOF
+
+chmod 755 /etc/rc.local
+ll /etc/rc.local
+
+/etc/rc.local
+
+ll /etc/systemd/system/rc-local.service
+  # -> ファイルが存在しないこと
+
+cat <<EOF > /etc/systemd/system/rc-local.service
+[Unit]
+Description=/etc/rc.local
+
+[Service]
+ExecStart=/etc/rc.local
+Restart=no
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable rc-local.service
+
+shutdown -r now
+```
+
+再起動後、Harborが起動することを確認する
+
+## Harbor GC/LogRotate 設定
+
+- Harbor に Web ブラウザでログイン
+- GC 設定
+  - `Administration` -> `Clean Up` -> `Garbage Collection`
+  - `Schedule to GC` を設定
+- Log Rotation
+  - `Administration` -> `Clean Up` -> `Log Rotation`
+  - `Schedule to purge` と `Keep records in` を設定
+
 ## Harbor のサーバ上に NFS サーバを構築
 
 作業実施サーバ: Harbor
