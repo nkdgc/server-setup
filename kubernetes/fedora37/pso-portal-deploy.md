@@ -6,21 +6,15 @@
 
 ```bash
 # ディスクサイズ拡張
-df -h
-  | ファイルシス            サイズ  使用  残り 使用% マウント位置
-  | (...)
+df -h | grep fedora-root
   | /dev/mapper/fedora-root    15G   15G   20K  100% /
-  | (...)
 
 lvextend -An --extents +100%FREE /dev/mapper/fedora-root
 
 xfs_growfs /dev/mapper/fedora-root
 
-df -h
-  | ファイルシス            サイズ  使用  残り 使用% マウント位置
-  | (...)
+df -h | grep fedora-root
   | /dev/mapper/fedora-root   159G   16G  143G   11% /
-  | (...)
 ```
 
 ## Harbor 自動起動設定
@@ -61,6 +55,24 @@ shutdown -r now
 ```
 
 再起動後、Harborが起動することを確認する
+
+```bash
+docker ps
+```
+
+```text
+<出力例>
+CONTAINER ID   IMAGE                                COMMAND                   CREATED          STATUS                        PORTS                                                                            NAMES
+a4539b6437ec   goharbor/harbor-jobservice:v2.9.1    "/harbor/entrypoint.…"   18 minutes ago   Up 56 seconds (healthy)                                                                                        harbor-jobservice
+0e3f59a0efe2   goharbor/nginx-photon:v2.9.1         "nginx -g 'daemon of…"   18 minutes ago   Up About a minute (healthy)   0.0.0.0:80->8080/tcp, :::80->8080/tcp, 0.0.0.0:443->8443/tcp, :::443->8443/tcp   nginx
+d0f2f33e445a   goharbor/harbor-core:v2.9.1          "/harbor/entrypoint.…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-core
+d4b58b1f8f77   goharbor/redis-photon:v2.9.1         "redis-server /etc/r…"   18 minutes ago   Up About a minute (healthy)                                                                                    redis
+2f8051939aea   goharbor/registry-photon:v2.9.1      "/home/harbor/entryp…"   18 minutes ago   Up About a minute (healthy)                                                                                    registry
+5926aa4ee847   goharbor/harbor-db:v2.9.1            "/docker-entrypoint.…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-db
+a36086a6d834   goharbor/harbor-registryctl:v2.9.1   "/home/harbor/start.…"   18 minutes ago   Up About a minute (healthy)                                                                                    registryctl
+5654ef2e9293   goharbor/harbor-portal:v2.9.1        "nginx -g 'daemon of…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-portal
+b43ff5244909   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   18 minutes ago   Up About a minute (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
+```
 
 ## Harbor GC/LogRotate 設定
 
@@ -299,13 +311,12 @@ vCenter サーバで VMRC 接続用ユーザを作成する
   - 「子へ伝達」にチェックを入れること
   - ![img](img/52_vmrc_role_bind.png)
 
-
 ## VMRC 用ユーザ情報を設定
 
 ```bash
 # 上で作成した VMRC 用ユーザの Username と Password を設定
 vmrc_username=pso-portal-vmrc@vsphere.local
-vmrc_password=VMware2!
+vmrc_password=VMware1!
 
 # base64 encode
 vmrc_username_enc=$(echo -n ${vmrc_username} | base64)
@@ -500,6 +511,13 @@ cat httpproxy.yaml
 作業実施サーバ: 管理クライアント
 
 ```bash
+# 動作確認用リソース削除
+kubectl get all
+kubectl delete -f ~/httpproxy-test.yaml
+kubectl delete deployment nginx
+kubectl delete service nginx
+kubectl get all
+
 # 差分確認
 diff -ru ../cloud-hub-manifests.bak .
 
@@ -535,6 +553,12 @@ watch kubectl get deploy,po,svc,httpproxy -n vmw-pso-portal
 kubectl apply -f cronjob.yaml
 kubectl get cronjob -n vmw-pso-portal
 watch kubectl get pod -n vmw-pso-portal
+
+kubectl get pod -n vmw-pso-portal
+kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-history-detect-system-errors | tail -n 1) -n vmw-pso-portal
+  # -> 204 NoContent が応答されていること
+kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep vm-refresh | tail -n 1) -n vmw-pso-portal
+  # -> 200 OK が応答されていること
 ```
 
 ## Seed データ投入
@@ -544,7 +568,7 @@ watch kubectl get pod -n vmw-pso-portal
 ```bash
 kubectl apply -f seed/be-portal-auth-seed.yaml
 kubectl get pod -n vmw-pso-portal -w | grep seed
-kubectl logs be-portal-auth-seed-XXXXX -n vmw-pso-portal
+kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-portal-auth-seed | tail -n 1) -n vmw-pso-portal
 ```
 
 以下ログが出力されていること
