@@ -1271,7 +1271,7 @@ cat /etc/hosts
 nslookup ${ENVOY_FQDN}
 ```
 
-/etc/hosts 登録後のため名前解決ができないことを確認する
+/etc/hosts 登録後のため名前解決ができることを確認する
 
 ```text
 <出力例>
