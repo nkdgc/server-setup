@@ -282,22 +282,47 @@ for yaml in $(find . -type f -name "*.yaml"); do
   sed -i -e "s/vmw-portal.home.ndeguchi.com/${ENVOY_FQDN}/g" ${yaml}
 done
 
-# VM Remote Console User 設定
-echo -n "administrator@vsphere.local" | base64
-echo -n "VMware1!" | base64
-
-vim be-vcenter-vm.yaml
-  # -> VCENTER_USER_FOR_VMRC, VCENTER_PASSWORD_FOR_VMRC に指定
-
-# 差分確認
+# diff
 diff -ru ../cloud-hub-manifests.bak .
+```
 
-# cat
-for yaml in $(find . -name "*.yaml"); do
-  echo "========== ${yaml} =========="
-  cat ${yaml}
-  echo ""
-done
+## VMRC 用ユーザ作成
+
+vCenter サーバで VMRC 接続用ユーザを作成する
+
+- ユーザ作成
+  - ![img](img/50_vmrc_add_user.png)
+- ロール作成
+  - `仮想マシン` -> `相互作用` -> `コンソールとの相互作用` の権限を付与
+  - ![img](img/51_vmrc_add_role.png)
+- ユーザに権限付与 
+  - 「子へ伝達」にチェックを入れること
+  - ![img](img/52_vmrc_role_bind.png)
+
+
+## VMRC 用ユーザ情報を設定
+
+```bash
+# 上で作成した VMRC 用ユーザの Username と Password を設定
+vmrc_username=pso-portal-vmrc@vsphere.local
+vmrc_password=VMware2!
+
+# base64 encode
+vmrc_username_enc=$(echo -n ${vmrc_username} | base64)
+vmrc_password_enc=$(echo -n ${vmrc_password} | base64)
+
+echo ${vmrc_username_enc}
+echo ${vmrc_password_enc}
+
+echo ${vmrc_username_enc} | base64 -d
+echo ${vmrc_password_enc} | base64 -d
+
+# replace
+sed -i -e "s/VCENTER_USER_FOR_VMRC: .*$/VCENTER_USER_FOR_VMRC: \"${vmrc_username_enc}\"/g" be-vcenter-vm.yaml
+sed -i -e "s/VCENTER_PASSWORD_FOR_VMRC: .*$/VCENTER_PASSWORD_FOR_VMRC: \"${vmrc_password_enc}\"/g" be-vcenter-vm.yaml
+
+# diff
+diff -u ../cloud-hub-manifests.bak/be-vcenter-vm.yaml ./be-vcenter-vm.yaml
 ```
 
 ## Generate a Certificate Authority Certificate
@@ -475,6 +500,16 @@ cat httpproxy.yaml
 作業実施サーバ: 管理クライアント
 
 ```bash
+# 差分確認
+diff -ru ../cloud-hub-manifests.bak .
+
+# 適用する yaml ファイルを cat
+for yaml in $(find . -name "*.yaml"); do
+  echo "========== ${yaml} =========="
+  cat ${yaml}
+  echo ""
+done
+
 # namespace 作成
 k apply -f ns-vmw-pso-portal.yaml
 
