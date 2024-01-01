@@ -1820,25 +1820,25 @@ kubectl get service
 ```bash
 # 後の作業を効率化するため、 DNS サーバに登録した envoy の FQDN を環境変数に設定する。
 cat <<EOF >> ~/.bashrc
-export ENVOY_FQDN="vmw-portal.home.ndeguchi.com"
-export ENVOY_IP="192.168.14.201"
+export envoy_fqdn="vmw-portal.home.ndeguchi.com"
+export envoy_ip="192.168.14.201"
 EOF
 
 cat ~/.bashrc
 source ~/.bashrc
-echo ${ENVOY_FQDN}
+echo ${envoy_fqdn}
   # -> 上記で設定した値が出力されること
 
-echo ${ENVOY_IP}
+echo ${envoy_ip}
   # -> 上記で設定した値が出力されること
 
 cat <<EOF >> /etc/hosts
-${ENVOY_IP} ${ENVOY_FQDN}
+${envoy_ip} ${envoy_fqdn}
 EOF
 
 cat /etc/hosts
 
-nslookup ${ENVOY_FQDN}
+nslookup ${envoy_fqdn}
 ```
 
 /etc/hosts 登録後のため名前解決ができることを確認する
@@ -1873,7 +1873,7 @@ metadata:
   name: httpproxy-test
 spec:
   virtualhost:
-    fqdn: ${ENVOY_FQDN}
+    fqdn: ${envoy_fqdn}
   routes:
     - conditions:
       - prefix: /nginx-01/
@@ -2024,10 +2024,10 @@ httpproxy-test   vmw-portal.home.ndeguchi.com                valid    Valid HTTP
 
 ```bash
 # アクセス確認
-curl --noproxy "*" http://${ENVOY_FQDN}/nginx-01/
+curl --noproxy "*" http://${envoy_fqdn}/nginx-01/
   # -> "<h1>nginx-01</h1>" が出力されることを確認
 
-curl --noproxy "*" http://${ENVOY_FQDN}/nginx-02/
+curl --noproxy "*" http://${envoy_fqdn}/nginx-02/
   # -> "<h1>nginx-02</h1>" が出力されることを確認
 ```
 
