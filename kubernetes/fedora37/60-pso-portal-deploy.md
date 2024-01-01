@@ -1,22 +1,5 @@
 # PSO Portal Deploy
 
-## ディスク拡張
-
-作業実施サーバ: ControlPlane, WorkerNode, 管理クライアント, Harbor など、Fedora37 で構築した全てのサーバ
-
-```bash
-# ディスクサイズ拡張
-df -h | grep fedora-root
-  | /dev/mapper/fedora-root    15G   15G   20K  100% /
-
-lvextend -An --extents +100%FREE /dev/mapper/fedora-root
-
-xfs_growfs /dev/mapper/fedora-root
-
-df -h | grep fedora-root
-  | /dev/mapper/fedora-root   159G   16G  143G   11% /
-```
-
 ## Harbor 自動起動設定
 
 作業実施サーバ: Harbor
