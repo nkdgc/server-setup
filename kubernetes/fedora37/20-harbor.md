@@ -22,7 +22,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 - [共通設定作業](50-common.md) を実施する。
 
-# Docker compose 確認
+## パッケージインストール確認
 
 - docker compose を実行可能であることを確認する
 
@@ -30,14 +30,12 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker compose version
   ```
 
-  - 以下のようにバージョン情報が出力されることを確認する。
+  - 確認観点：以下のようにバージョン情報が出力されることを確認する。
 
     ```text
     <出力例>
     Docker Compose version v2.21.0
     ```
-
-# openssl 確認
 
 - openssl コマンドがインストールされていることを確認する
 
@@ -45,14 +43,14 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   openssl version
   ```
 
-  - 以下のようにバージョン情報が出力されることを確認する。
+  - 確認観点：以下のようにバージョン情報が出力されることを確認する。
 
     ```text
     <出力例>
     OpenSSL 3.0.9 30 May 2023 (Library: OpenSSL 3.0.9 30 May 2023)
     ```
 
-# Download and Unpack the Installer
+## Harbor コンテナイメージ取得
 
 - Harbor の offline installer をダウンロードし解凍する
 
@@ -63,8 +61,6 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   tar zxvf harbor-offline-installer-v2.9.1.tgz
   ll harbor/
   ```
-
-# Load Images
 
 - Harbor のコンテナイメージをロードする
 
@@ -78,7 +74,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker images
   ```
 
-  - 以下のように Load した image が存在することを確認
+  - 確認観点：ロードしたイメージが存在すること
 
     ```text
     <出力例>
@@ -97,7 +93,9 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     goharbor/prepare                v2.9.1    adb2d804c458   5 weeks ago   253MB
     ```
 
-# Generate a Certificate Authority Certificate
+## 証明書作成・登録
+
+### Generate a Certificate Authority Certificate
 
 - Harbor の SSL 証明書を作成するため、まずは CA 証明書を作成する。
 
@@ -122,7 +120,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     # -> ファイルが存在することを確認
   ```
 
-# Generate a Server Certificate
+### Generate a Server Certificate
 
 - Harbor の SSL 証明書を作成する
 
@@ -174,7 +172,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   openssl x509 -text -noout -in ${harbor_fqdn}.crt | grep -e "Issuer:" -e "Subject:"
   ```
 
-  - Harbor の FQDN が設定されていることを確認
+  - 確認観点：Harbor の FQDN が設定されていること
 
     ```text
     <出力例>
@@ -186,7 +184,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   openssl x509 -text -noout -in ${harbor_fqdn}.crt | grep -A 1 "Subject Alternative Name"
   ```
 
-  - v3.ext に設定した SAN が証明書に設定されていることを確認
+  - 確認観点：v3.ext に設定した SAN が証明書に設定されていることを確認
 
     ```text
     <出力例>
@@ -194,7 +192,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
         DNS:harbor2.home.ndeguchi.com, IP Address:192.168.14.40
     ```
 
-# CA 証明書を Trust Anchor に登録
+### CA 証明書を Trust Anchor に登録
 
 - Harbor の CA 証明書をサーバの Trust Anchor に登録する。
 
@@ -218,7 +216,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   diff trust_list_before.txt trust_list_after.txt
   ```
 
-  - Harbor の CA 証明書が差分として出力されること
+  - 確認観点：Harbor の CA 証明書が差分として出力されること
 
     ```text
     <出力例>
@@ -230,7 +228,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     >
     ```
 
-# Provide the Certificates to Harbor and Docker
+### Provide the Certificates to Harbor and Docker
 
 - Harbor が上記で作成した SSL 証明書を用いて起動するよう設定
 
@@ -270,7 +268,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   systemctl status docker -l --no-pager
   ```
 
-# Configure the Harbor YML File
+## Configure the Harbor YML File
 
 - harbor を起動する際に指定する設定ファイルを修正する
 
@@ -295,7 +293,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   diff -u harbor.yml.tmpl harbor.yml
   ```
 
-  - 以下値をが正しく設定されていることを確認する。
+  - 確認観点：以下の値が正しく設定されていること
     - hostname
       - harbor の FQDN
     - https.certificate
@@ -327,7 +325,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     +  password: VMware1!
     ```
 
-# Deploy or Reconfigure Harbor
+## Deploy or Reconfigure Harbor
 
 - Harbor を起動
 
@@ -337,7 +335,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ./prepare
   ```
 
-  - 以下のように `Generated configuration file: /compose_location/docker-compose.yml` が出力されることを確認
+  - 確認観点：以下のように `Generated configuration file: /compose_location/docker-compose.yml` が出力されることを確認
 
     ```text
     <出力例>
@@ -397,7 +395,9 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     88c0286d6024   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   53 seconds ago   Up 51 seconds (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
     ```
 
-# localhost の Docker から Login できることを確認
+## 動作確認（localhost）
+
+### docker login from localhost
 
 - Harbor を構築した Fedora の Docker から Harbor にアクセスできることを確認する
 
@@ -406,7 +406,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker login ${harbor_fqdn} --username admin
   ```
 
-  - パスワード入力後、Login Succeeded が出力されることを確認する
+  - パスワード入力後、`Login Succeeded` が出力されることを確認する
 
     ```text
     <出力例>
@@ -418,17 +418,19 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     Login Succeeded
     ```
 
-# nginx コンテナイメージ取得
+### nginx コンテナイメージ取得
 
 - Docker Hub に疎通できるサーバで nginx のコンテナイメージを取得する。 \
-  **注意** : Harbor を構築している Fedora ではなく Docker Hub に疎通できる別サーバで実施すること。
+  作業実施サーバ：Harbor を構築している Fedora ではなく Docker Hub に疎通できる別のサーバ **(注意)**
 
   ```bash
   docker images
+  
+  # Pull
   docker pull nginx:latest
   ```
 
-  - 取得に成功すること
+  - 確認観点：取得に成功すること
 
     ```text
     <出力例>
@@ -449,15 +451,19 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker images | grep -e REPOSITORY -e nginx
   ```
 
-  - nginx が存在すること
+  - 確認観点：nginx が存在すること
 
     ```text
+    <出力例>
     REPOSITORY   TAG      IMAGE ID       CREATED        SIZE
     nginx        latest   d453dd892d93   2 months ago   187MB
     ```
 
   ```bash
+  # Save
   docker save nginx:latest > nginx-latest.tar
+  
+  # Gzip
   ll nginx-latest.tar
   gzip nginx-latest.tar
   ll nginx-latest.tar.gz
@@ -465,8 +471,8 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 - 上記で圧縮したファイル `nginx-latest.tar.gz` を Harbor を構築している Fedora の `/root/` に配置する。
 
-- `nginx-latest.tar.gz` を Harbor を構築している Fedora の Docker にロードする。 \
-  **注意** Harbor サーバ上で実施すること。
+- Harbor を構築している Fedora の Docker に Nginx のコンテナイメージをロードする。 \
+  作業実施サーバ：Harbor を構築している Fedora **(注意)**
 
   ```bash
   cd ~/
@@ -476,7 +482,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker load < nginx-latest.tar.gz
   ```
 
-  - ロードに成功すること
+  - 確認観点：ロードに成功すること
 
     ```text
     7292cf786aa8: Loading layer [==============>]  77.82MB/77.82MB
@@ -493,23 +499,23 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker images | grep -e REPOSITORY -e nginx.*latest
   ```
 
-  - nginx:latest のコンテナイメージが存在すること
+  - 確認観点：nginx:latest のコンテナイメージが存在すること
 
     ```text
     REPOSITORY  TAG       IMAGE ID       CREATED        SIZE
     nginx       latest    d453dd892d93   2 months ago   187MB
     ```
 
-# localhost の Docker から Push できることを確認
+### Push 確認
 
-- Harbor を構築した Fedora の Docker から Harbor にコンテナイメージを Push できることを確認する
+- Harbor を構築した Fedora の Docker から Harbor に Nginx のコンテナイメージを Push できることを確認する
 
   ```bash
   docker tag nginx:latest ${harbor_fqdn}/library/nginx:latest
   docker images | grep -e REPOSITORY -e nginx.*latest
   ```
 
-  - \<harbor_fqdn\>/library/nginx:latest が存在すること
+  - 確認観点： \<harbor_fqdn\>/library/nginx:latest が存在すること
 
     ```text
     <出力例>
@@ -536,7 +542,142 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     latest: digest: sha256:4669f6671aca20a34c3dfcd017e84fb3cae40788ea664866eaea698e3dfe241c size: 1778
     ```
 
-# 自動起動設定
+
+## 動作確認（管理クライアント）
+
+作業対象サーバ：管理クライアント **(注意)**
+
+### 証明書取得
+
+- Harbor の CA 証明書を取得する
+
+  ```bash
+  mkdir -p /etc/docker/certs.d/${harbor_fqdn}
+  cd /etc/docker/certs.d/${harbor_fqdn}
+  scp root@${harbor_fqdn}:/root/ca.crt .
+  ll
+    # -> ca.crt が存在すること
+  ```
+
+### docker login from k8s-management
+
+- 管理クライアントの docker から Harbor にログインできることを確認する
+
+  ```bash
+  # Harbor にログインできることを確認
+  docker login ${harbor_fqdn} --username admin
+  ```
+
+  - パスワード入力後、Login Succeeded が出力されることを確認する
+
+    ```text
+    <出力例>
+    Password:
+    WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
+    Configure a credential helper to remove this warning. See
+    https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+    
+    Login Succeeded
+    ```
+
+### Pull 確認
+
+- 管理クライアントから Harbor で保持するコンテナイメージ (nginx) を Pull できることを確認する
+
+  ```bash
+  # Pull
+  docker pull ${harbor_fqdn}/library/nginx:latest
+  ```
+
+  - 確認観点：Harbor から pull できること
+
+    ```text
+    <出力例>
+    latest: Pulling from library/nginx
+    1f7ce2fa46ab: Pull complete
+    9b16c94bb686: Pull complete
+    9a59d19f9c5b: Pull complete
+    9ea27b074f71: Pull complete
+    c6edf33e2524: Pull complete
+    84b1ff10387b: Pull complete
+    517357831967: Pull complete
+    Digest: sha256:3c4c1f42a89e343c7b050c5e5d6f670a0e0b82e70e0e7d023f10092a04bbb5a7
+    Status: Downloaded newer image for harbor2.home.ndeguchi.com/library/nginx:latest
+    harbor2.home.ndeguchi.com/library/nginx:latest
+    ```
+
+  ```bash
+  docker images | grep "nginx.*latest"
+  ```
+
+  - 確認観点：pull したイメージが存在すること
+
+    ```text
+    <出力例>
+    harbor2.home.ndeguchi.com/library/nginx   latest     a6bd71f48f68   2 weeks ago     187MB
+    ```
+
+  ```bash
+  # pull したイメージを削除
+  docker rmi ${harbor_fqdn}/library/nginx:latest
+  docker images | grep "nginx.*latest"
+    # -> イメージが存在しないこと(何も出力されないこと)
+  ```
+
+### GUI アクセス確認
+
+- 管理クライアントから Harbor へ GUI でアクセスできることを確認する
+
+  - Harbor の CA 証明書を Trust Anchor に登録
+
+    ```bash
+    # get list before update
+    cd
+    trust list > trust_list_before.txt
+    ll trust_list_before.txt
+    cat trust_list_before.txt
+    
+    # copy CA cert
+    cp /etc/docker/certs.d/${harbor_fqdn}/ca.crt /etc/pki/ca-trust/source/anchors/
+    ll /etc/pki/ca-trust/source/anchors/
+    update-ca-trust
+    
+    # get list after update
+    trust list > trust_list_after.txt
+    ll trust_list_after.txt
+    cat trust_list_after.txt
+    
+    # diff
+    diff trust_list_before.txt trust_list_after.txt
+    ```
+
+    - Harbor の CA 証明書が差分として出力されること
+
+      ```text
+      <出力例>
+      > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
+      >     type: certificate
+      >     label: harbor2.home.ndeguchi.com
+      >     trust: anchor
+      >     category: authority
+      >
+      ```
+
+    ```bash
+    # 再起動
+    shutdown -r now
+    ```
+
+  - GUI アクセス確認
+    - 管理クライアントの GUI にログインし Firefox で Harbor の FQDN にアクセス・ログインできることを確認する。
+      - ID: `admin`, PW: harbor.ymlで指定したパスワード
+      - ![img](img/10_Harbor_login_page.png)
+      - ![img](img/11_Harbor_top_page.png)
+    - library/nginx:latest が存在することを確認する
+      - ![img](img/20_pushed_image.png)
+
+
+## 自動起動設定
 
 - サーバ起動時に Harbor が自動起動するよう設定する
 
@@ -574,7 +715,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   shutdown -r now
   ```
 
-- 再起動後、Harborが起動することを確認する
+- 再起動後、Harborが自動起動していることを確認する
 
   ```bash
   docker ps | grep harbor | wc -l
@@ -595,124 +736,4 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
     5654ef2e9293   goharbor/harbor-portal:v2.9.1        "nginx -g 'daemon of…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-portal
     b43ff5244909   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   18 minutes ago   Up About a minute (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
     ```
-
-
-# 管理クライアントへの証明書配置・動作確認
-
-作業対象サーバ：管理クライアント **(注意)**
-
-- docker から Harbor に接続し利用できることを確認する
-
-  ```bash
-  # Harbor の CA 証明書を取得
-  mkdir -p /etc/docker/certs.d/${harbor_fqdn}
-  cd /etc/docker/certs.d/${harbor_fqdn}
-  scp root@${harbor_fqdn}:/root/ca.crt .
-  ll
-  
-  # Harbor にログインできることを確認
-  docker login ${harbor_fqdn} --username admin
-  ```
-
-  - パスワード入力後、Login Succeeded が出力されることを確認する
-
-    ```text
-    <出力例>
-    Password:
-    WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
-    Configure a credential helper to remove this warning. See
-    https://docs.docker.com/engine/reference/commandline/login/#credentials-store
-    
-    Login Succeeded
-    ```
-
-  ```bash
-  # Harbor から nginx を pull
-  docker pull ${harbor_fqdn}/library/nginx:latest
-  ```
-
-  - Harbor から image を pull できること
-
-    ```text
-    <出力例>
-    latest: Pulling from library/nginx
-    1f7ce2fa46ab: Pull complete
-    9b16c94bb686: Pull complete
-    9a59d19f9c5b: Pull complete
-    9ea27b074f71: Pull complete
-    c6edf33e2524: Pull complete
-    84b1ff10387b: Pull complete
-    517357831967: Pull complete
-    Digest: sha256:3c4c1f42a89e343c7b050c5e5d6f670a0e0b82e70e0e7d023f10092a04bbb5a7
-    Status: Downloaded newer image for harbor2.home.ndeguchi.com/library/nginx:latest
-    harbor2.home.ndeguchi.com/library/nginx:latest
-    ```
-
-  ```bash
-  docker images | grep "nginx.*latest"
-  ```
-
-  - pull したイメージが存在することを確認する
-
-    ```text
-    <出力例>
-    harbor2.home.ndeguchi.com/library/nginx   latest     a6bd71f48f68   2 weeks ago     187MB
-    ```
-
-  ```bash
-  # pull したイメージを削除する
-  docker rmi ${harbor_fqdn}/library/nginx:latest
-  docker images | grep "nginx.*latest"
-  ```
-
-  - イメージが存在しないこと(何も出力されないこと)を確認する
-
-- Harbor の CA 証明書を Trust Anchor に登録
-
-  ```bash
-  # get list before update
-  cd
-  trust list > trust_list_before.txt
-  ll trust_list_before.txt
-  cat trust_list_before.txt
-  
-  # copy CA cert
-  cp /etc/docker/certs.d/${harbor_fqdn}/ca.crt /etc/pki/ca-trust/source/anchors/
-  ll /etc/pki/ca-trust/source/anchors/
-  update-ca-trust
-  
-  # get list after update
-  trust list > trust_list_after.txt
-  ll trust_list_after.txt
-  cat trust_list_after.txt
-  
-  # diff
-  diff trust_list_before.txt trust_list_after.txt
-  ```
-
-  - Harbor の CA 証明書が差分として出力されること
-
-    ```text
-    <出力例>
-    > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
-    >     type: certificate
-    >     label: harbor2.home.ndeguchi.com
-    >     trust: anchor
-    >     category: authority
-    >
-    ```
-
-  ```bash
-  # 再起動
-  shutdown -r now
-  ```
-
-- ブラウザアクセス確認
-  - GUI でログインし Firefox で Harbor の FQDN にアクセス・ログインできることを確認する。
-    - ID: `admin`, PW: harbor.ymlで指定したパスワード
-    - ![img](img/10_Harbor_login_page.png)
-    - ![img](img/11_Harbor_top_page.png)
-  - library/nginx:latest が存在することを確認する
-    - ![img](img/20_pushed_image.png)
-
 

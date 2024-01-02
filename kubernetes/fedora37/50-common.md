@@ -220,7 +220,9 @@
 
 ## (OPTIONAL) tmux,vim,bash インストール/設定
 
-- tmux のインストール及び tmux, vim, bash の設定ファイルを作成する。
+- tmux のインストール及び tmux, vim, bash の設定ファイルを作成する。 \
+  構築作業には影響しないのでOptional.
+
   ```bash
   # tmux インストール
   dnf install -y tmux
@@ -310,7 +312,7 @@
   ll /etc/chrony.conf*
   vim /etc/chrony.conf
     # 以下 diff 結果例を参考に NTP 同期先を指定する。
-    # Fedora から参照可能な NTP サーバを指定すること。
+    # 構築している Fedora から参照可能な NTP サーバを指定すること。
   
   # 差分確認
   diff -u /etc/chrony.conf.org /etc/chrony.conf
@@ -372,7 +374,8 @@
 
 ## Docker Engine インストール・設定
 
-- Install
+- インストール
+
   ```bash
   # 古いバージョンのDocker パッケージを削除
   dnf remove -y docker docker-client docker-client-latest docker-common \
