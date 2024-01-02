@@ -396,7 +396,6 @@
   - 確認観点： `active (running)` が出力されること
 
     ```text
-    <出力例>
     ● docker.service - Docker Application Container Engine
          Loaded: loaded (/usr/lib/systemd/system/docker.service; enabled; preset: disabled)
          Active: active (running) since Mon 2024-01-01 21:40:56 JST; 15h ago
