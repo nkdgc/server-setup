@@ -24,19 +24,24 @@
 
 ## Harbor の証明書取得・動作確認
 
-- 実施対象サーバ：5台全て
+実施対象サーバ：5台全て
+
+- Harbor の CA 証明書を取得
 
   ```bash
-  # Harbor の CA 証明書を取得
   mkdir -p /etc/docker/certs.d/${harbor_fqdn}
   cd /etc/docker/certs.d/${harbor_fqdn}
   scp root@${harbor_fqdn}:/root/ca.crt .
   ll
+    # -> ca.crt が存在すること
+  ```
+
+- docker login
   
-  # Harbor にログインできることを確認
+  ```
   docker login ${harbor_fqdn} --username admin
   ```
-  - パスワード入力後、Login Succeeded が出力されることを確認する
+  - 確認観点：パスワード入力後、 `Login Succeeded` が出力されること
 
     ```text
     <出力例>
@@ -48,12 +53,14 @@
     Login Succeeded
     ```
 
+- Pull 確認
+
   ```bash
-  # pull nginx from harbor
+  # Pull
   docker pull ${harbor_fqdn}/library/nginx:latest
   ```
 
-  - Harbor から image を pull できること
+  - 確認観点：Harbor から image を pull できること
 
     ```text
     <出力例>
@@ -75,7 +82,7 @@
   docker images | grep "nginx.*latest"
   ```
 
-  - pull したイメージが存在することを確認する
+  - 確認観点：pull したイメージが存在すること
 
     ```text
     <出力例>
@@ -86,14 +93,14 @@
   # pull したイメージを削除する
   docker rmi ${harbor_fqdn}/library/nginx:latest
   docker images | grep "nginx.*latest"
+    # -> イメージが存在しないこと(何も出力されないこと)
   ```
-
-  - イメージが存在しないこと(何も出力されないこと)
-
 
 ## Swap Off
 
-- 実施対象サーバ：5台全て
+実施対象サーバ：5台全て
+
+- スワップを無効化する
 
   ```bash
   dnf remove -y zram-generator-defaults
@@ -104,7 +111,9 @@
 
 ## Forwarding/Bridge 許可
 
-- 実施対象サーバ：5台全て
+実施対象サーバ：5台全て
+
+- IP Forwarding と Bridge を有効化する
 
   ```bash
   cat <<EOF | tee /etc/modules-load.d/k8s.conf
@@ -121,17 +130,19 @@
   net.bridge.bridge-nf-call-ip6tables = 1
   net.ipv4.ip_forward = 1
   EOF
-  
-  # 再起動
-  shutdown -r now
   ```
+  
+- 再起動後、設定が反映されていることを確認する
 
   ```bash
+  # 再起動
+  shutdown -r now
+  
   # 確認
   sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
   ```
 
-  - すべて 1 が指定されていることを確認
+  - 確認観点：すべて 1 が指定されていること
 
     ```text
     net.bridge.bridge-nf-call-iptables = 1
@@ -139,16 +150,18 @@
     net.ipv4.ip_forward = 1
     ```
 
-## cri-dockerd のインストール
+## cri-dockerd インストール
 
-- 実施対象サーバ：5台全て
+実施対象サーバ：5台全て
+
+- コンテナランタイムは Docker を使用するため cri-dockerd をインストールする
 
   ```bash
   # 前提パッケージインストール
   dnf install -y git make go
   
-  # git コマンドの proxy 設定(環境に合わせてproxyサーバのIP/PortNoを変更すること)
-  git config --global http.proxy http://192.168.13.2:8080
+  # git コマンドの proxy 設定
+  git config --global http.proxy http://${proxy_ip_port}
   
   # cri-dockerd をダウンロード
   cd ; git clone https://github.com/Mirantis/cri-dockerd.git
@@ -166,7 +179,7 @@
   diff -u ~/cri-docker.service.org /etc/systemd/system/cri-docker.service
   ```
 
-  - 以下のように `/usr/bin/cri-dockerd` が `/usr/local/bin/cri-dockerd` で置き換えられていること
+  - 確認観点：`/usr/bin/cri-dockerd` が `/usr/local/bin/cri-dockerd` で置き換えられていること
 
     ```diff
     --- /root/cri-docker.service.org        2024-01-01 21:12:05.005085507 +0900
@@ -182,64 +195,18 @@
      RestartSec=2
     ```
 
-
   ```bash
   systemctl daemon-reload
   systemctl enable cri-docker.service 
   systemctl start  cri-docker.socket
   systemctl status cri-docker.socket --no-pager
-  
-  # pause image を harbor で保持するイメージを使用するよう指定
-  sed -i -e "s,^\(ExecStart=.*\)$,\1 --pod-infra-container-image ${harbor_fqdn}/kubernetes/pause:3.9,g" /etc/systemd/system/cri-docker.service
-  diff -u ~/cri-docker.service.org /etc/systemd/system/cri-docker.service
   ```
-
-  - 以下のように `ExecStart=` の末尾に `--pod-infra-container-image <HarborのFQDN>/kubernetes/pause:3.9` が追加されていること
-
-    ```diff
-    --- /root/cri-docker.service.org        2024-01-01 21:12:05.005085507 +0900
-    +++ /etc/systemd/system/cri-docker.service      2024-01-01 21:14:16.586800334 +0900
-    @@ -7,7 +7,7 @@
-    
-     [Service]
-     Type=notify
-    -ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd://
-    +ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd:// --pod-infra-container-image harbor2.home.ndeguchi.com/kubernetes/pause:3.9
-     ExecReload=/bin/kill -s HUP $MAINPID
-     TimeoutSec=0
-     RestartSec=2
-    ```
-
-  ```bash
-  systemctl daemon-reload
-  systemctl status  cri-docker.socket --no-pager
-  systemctl restart cri-docker.socket
-  systemctl status  cri-docker.socket --no-pager
-  ```
-
-  - `Active: active (listening)` が出力されること
-
-    ```text
-    ● cri-docker.socket - CRI Docker Socket for the API
-         Loaded: loaded (/etc/systemd/system/cri-docker.socket; disabled; preset: disabled)
-         Active: active (listening) since Mon 2024-01-01 21:17:12 JST; 2min 37s ago
-       Triggers: ● cri-docker.service
-         Listen: /run/cri-dockerd.sock (Stream)
-          Tasks: 0 (limit: 4632)
-         Memory: 0B
-            CPU: 514us
-         CGroup: /system.slice/cri-docker.socket
-    
-     1月 01 21:17:12 k8s-worker02 systemd[1]: Starting cri-docker.socket - CRI Docker Socket for the API...
-     1月 01 21:17:12 k8s-worker02 systemd[1]: Listening on cri-docker.socket - CRI Docker Socket for the API.
-    ```
-
-- 参考: [cri-dockerd で pause image を指定](https://kubernetes.io/ja/docs/setup/production-environment/container-runtimes/#override-pause-image-cri-dockerd-mcr "サンドボックス(pause)イメージを上書きする")
-
 
 ## kubeadm, kubectl, kubelet のインストール
 
-- 実施対象サーバ：5台全て
+実施対象サーバ：5台全て
+
+- Kubernetes のリポジトリを追加し、kubeadm, kubectl, kubelet をインストールする
 
   ```bash
   # リポジトリ追加
@@ -254,27 +221,30 @@
   
   cat /etc/yum.repos.d/kubernetes.repo
   
-  # Kubeadm、kubectl、kubeletをインストール
+  # Kubeadm、kubectl、kubelet インストール
   dnf install -y kubelet kubeadm kubectl
   
   systemctl daemon-reload
   systemctl start kubelet
   systemctl enable kubelet
   systemctl status kubelet --no-pager
-  # 起動に失敗し code=exited, status=1/FAILURE のエラーが出力されているが現時点では問題無し。
+  # 起動に失敗し code=exited, status=1/FAILURE のエラーが出力されるが現時点では問題無し。
   ```
 
 ## HAProxy(LB) のインストール
 
-- 実施対象サーバ：ControlPlane#1-3 の 3 台のみで実施 **(注意)**
+
+### インストール
+
+- 実施対象サーバ：ControlPlane#1-3 の 3 台のみ **(注意)**
 
   ```bash
   dnf install -y haproxy keepalived
   ```
 
-## HAProxy(LB) の設定・起動 - ControlPlane#1
+### ControlPlane #01 設定・起動
 
-- 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+- 実施対象サーバ：ControlPlane #01 のみ **(注意)**
 
   ```bash
   vim /etc/keepalived/check_apiserver.sh
@@ -352,7 +322,7 @@
   vim /etc/haproxy/haproxy.cfg
   ```
 
-  - defaults セクションの1つしたのセクション以降を全て削除し、以下の内容を追記する
+  - defaults セクションの1つ下のセクション以降を全て削除し、以下の内容を追記する
 
     ```text
     #---------------------------------------------------------------------
@@ -384,14 +354,15 @@
   ```bash
   # haproxy.cfg の妥当性確認
   haproxy -c -f /etc/haproxy/haproxy.cfg
-  # -> "Configuration file is valid" が出力されること。
-  #    WARNING が出力されるが問題なし。
+    # -> "Configuration file is valid" が出力されること。
+    #    WARNING が出力されるが問題なし。
   
-  # keepalivedとhaproxyを起動
+  # keepalived 起動
   systemctl start keepalived
   systemctl enable keepalived
   systemctl status keepalived --no-pager
   
+  # haproxy 起動
   systemctl start haproxy
   systemctl enable haproxy
   systemctl status haproxy --no-pager
@@ -400,7 +371,7 @@
   ip a
   ```
 
-  - NIC に VIP が追加されていること
+  - 確認観点：NIC に VIP が追加されていること
 
     ```test
     <出力例>
@@ -413,25 +384,28 @@
            valid_lft forever preferred_lft forever
     ```
 
-## HAProxy(LB) の設定 - ControlPlane#2
+### ControlPlane #02 設定
 
-- 実施対象サーバ：ControlPlane#2 のみで実施 **(注意)**
+- 実施対象サーバ：ControlPlane #02 のみ **(注意)**
 
   ```bash
-  # ControlPlane#1 から keepalived.conf を取得する
+  # ControlPlane #01 から keepalived.conf を取得
   scp root@${k8s_cp01_ip}:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+  
+  # backup
   cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
   
-  # "state MASTER" を "state SLAVE" に変更する
+  # "state MASTER" を "state SLAVE" に変更
   sed -i -e "s/state MASTER/state SLAVE/" /etc/keepalived/keepalived.conf
   
-  # "priority 255" を "priority 254" に変更する
+  # "priority 255" を "priority 254" に変更
   sed -i -e "s/priority 255/priority 254/" /etc/keepalived/keepalived.conf
   
+  # 差分確認
   diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
   ```
 
-  - 差分が以下のみであること
+  - 確認観点：差分が以下のみであること
 
     ```text
     <出力例>
@@ -445,21 +419,24 @@
     >   priority 254
     ```
 
-## HAProxy(LB) の設定 - ControlPlane#3
+### ControlPlane #03 設定
 
-- 実施対象サーバ：ControlPlane#3 のみで実施 **(注意)**
+- 実施対象サーバ：ControlPlane #03 のみ **(注意)**
 
   ```bash
-  # ControlPlane#1 から keepalived.conf を取得する
+  # ControlPlane#1 から keepalived.conf を取得
   scp root@${k8s_cp01_ip}:/etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf
+  
+  # backup
   cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
   
-  # "state MASTER" を "state SLAVE" に変更する
+  # "state MASTER" を "state SLAVE" に変更
   sed -i -e "s/state MASTER/state SLAVE/" /etc/keepalived/keepalived.conf
   
-  # "priority 255" を "priority 253" に変更する
+  # "priority 255" を "priority 253" に変更
   sed -i -e "s/priority 255/priority 253/" /etc/keepalived/keepalived.conf
   
+  # 差分確認
   diff /etc/keepalived/keepalived.conf.bak /etc/keepalived/keepalived.conf
   ```
 
@@ -477,53 +454,63 @@
     >   priority 253
     ```
 
-## HAProxy(LB) の設定・起動 - ControlPlane#2,3
+### ControlPlane #02, #03 設定・起動
 
-- 実施対象サーバ：ControlPlane#2,3 の2台のみで実施 **(注意)**
+- 実施対象サーバ：ControlPlane #02, #03 の 2 台のみ **(注意)**
+
   ```bash
-  # ControlPlane#1 から check_apiserver.sh を取得し実行権限を付与する
+  # ControlPlane#1 から check_apiserver.sh を取得し実行権限を付与
   scp root@${k8s_cp01_ip}:/etc/keepalived/check_apiserver.sh /etc/keepalived/check_apiserver.sh
   chmod +x /etc/keepalived/check_apiserver.sh
   ll  /etc/keepalived/check_apiserver.sh
   cat /etc/keepalived/check_apiserver.sh
   
-  # ControlPlane#1 から haproxy.cfg を取得する
+  # ControlPlane#1 から haproxy.cfg を取得
   cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg-org
   scp root@${k8s_cp01_ip}:/etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg
   ll  /etc/haproxy/haproxy.cfg
   cat /etc/haproxy/haproxy.cfg
   
-  # keepalivedとhaproxyを起動
+  # keepalived を起動
   systemctl start  keepalived
   systemctl enable keepalived
   systemctl status keepalived --no-pager
   
+  # haproxy を起動
   systemctl start haproxy
   systemctl enable haproxy
   systemctl status haproxy --no-pager
   ```
 
-## Kubernetes システム用コンテナイメージを取得
+## Kubernetes コンテナイメージ取得
 
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
-    
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | kubernetes        |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
+### Harbor プロジェクト作成
+
+- 実施対象サーバ：管理クライアント **(注意)**
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
+
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | kubernetes        |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
 
     ![img](img/60_harbor_create_k8s_project.png)
 
-- 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+### コンテナイメージリスト取得
+
+- 実施対象サーバ：ControlPlane#01 のみ **(注意)**
+
   ```bash
   # Kubernetes で必要となるコンテナイメージの一覧を取得
   kubeadm config images list
   ```
+
   - 以下のようにコンテナイメージのリストが表示されるためこれをメモする
+
     ```text
     <出力例>
     registry.k8s.io/kube-apiserver:v1.28.5
@@ -534,12 +521,20 @@
     registry.k8s.io/etcd:3.5.9-0
     registry.k8s.io/coredns/coredns:v1.10.1
     ```
+
+### コンテナイメージ取得
+
 - インターネットからコンテナイメージを取得できるサーバで Kubernetes のコンテナイメージを取得する。 \
-  **注意** : 本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。
+  本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
+
   ```bash
+  mkdir k8s-images
+  cd k8s-images
   vim image_list.txt
   ```
+
   - 上記 `kubeadm config images list` コマンドで出力されたコンテナイメージのリストを入力する
+
     ```text
     <入力例>
     registry.k8s.io/kube-apiserver:v1.28.5
@@ -550,6 +545,7 @@
     registry.k8s.io/etcd:3.5.9-0
     registry.k8s.io/coredns/coredns:v1.10.1
     ```
+
   ```bash
   # コマンド実行に失敗したことを検知するための関数定義
   function error_msg(){
@@ -576,16 +572,19 @@
       echo "== $(ls -l ${tar_file_name})"
       
       echo "== gzip"
-      gzip ${tar_file_name}
+      gzip ${tar_file_name} || error_msg "failed to gzip ${tar_file_name}"
       echo "== $(ls -l ${tar_file_name}.gz)"
       echo ""
     fi
   done < image_list.txt
   ```
+
   ```bash
   ll
   ```
+
   - image_list.txt に記載したコンテナイメージの tar.gz ファイルが存在すること
+
     ```text
     -rw-r--r--  1 root  root   15878241 12 31 23:01 registry.k8s.io_coredns_coredns_v1.10.1.tar.gz
     -rw-r--r--  1 root  root  101234813 12 31 23:01 registry.k8s.io_etcd_3.5.9-0.tar.gz
@@ -596,14 +595,35 @@
     -rw-r--r--  1 root  root     308144 12 31 23:01 registry.k8s.io_pause_3.9.tar.gz
     ```
 
-
-- 管理クライアント **(注意)** でディレクトリ `/root/k8s-images/` を作成し、上記で出力したコンテナイメージの tar.gz ファイルをこのディレクトリに配置したうえで以下作業を実施する。
   ```bash
-  cd /root/k8s-images
-  ls -l
+  cd ../
+  tar -zcvf k8s-images.tar.gz k8s-images
+  ll k8s-images.tar.gz
+    # -> ファイルが存在すること
   ```
 
-  - tar.gz ファイルが存在すること
+### コンテナイメージ転送
+
+- 上記で作成したファイル `k8s-images.tar.gz` を管理クライアントの `/root/` 直下に転送する。
+
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
+
+  ```bash
+  cd /root/
+  ls -l k8s-images.tar.gz
+    # -> ファイルが存在すること
+  
+  tar -zxvf k8s-images.tar.gz
+  ll -d k8s-images
+    # ディレクトリが存在すること
+  
+  cd k8s-images
+  ll
+  ```
+
+  - 確認観点：コンテナイメージの tar.gz ファイルが存在すること
 
     ```text
     <出力例>
@@ -617,18 +637,28 @@
     ```
 
   ```bash
-  # load
+  # コマンド実行に失敗したことを検知するための関数定義
+  function error_msg(){
+    echo ""
+    echo "================================================"
+    echo "ERROR: $1"
+    echo "================================================"
+    echo ""
+    sleep infinity
+  }
+  
+  # Load
   for f in $(ls); do
     echo "===== ${f} ====="
-    docker load < ${f}
+    docker load < ${f} || error_msg "failed to load image ${f}"
     echo ""
   done
   
-  docker images | grep registry.k8s.io
   docker images | grep registry.k8s.io | wc -l
+  docker images | grep registry.k8s.io
   ```
   
-  - ロードした image が存在すること
+  - 確認観点：ロードしたコンテナイメージが存在すること
 
     ```text
     registry.k8s.io/kube-apiserver            v1.28.5   9ecc4287300e   12 days ago     126MB
@@ -641,19 +671,19 @@
     ```
 
   ```bash
-  # tag
+  # Tag
   for source_img in $(docker images | grep registry.k8s.io | awk '{ print $1":"$2 }'); do
     echo "===== ${source_img} ====="
     image_name=$(echo ${source_img} | sed -e "s/^.*\///g")
     echo "- image_name=${image_name}"
-    docker tag ${source_img} ${harbor_fqdn}/kubernetes/${image_name}
+    docker tag ${source_img} ${harbor_fqdn}/kubernetes/${image_name} || error_msg "failed to tag"
     echo ""
   done
   
   docker images | grep ${harbor_fqdn}/kubernetes
   ```
 
-  - tag 付したイメージが存在すること
+  -確認観点： tag 付けしたイメージが存在すること
 
     ```text
     <出力例>
@@ -667,7 +697,7 @@
     ```
 
   ```bash
-  # push
+  # Push
   for image in $(docker images | grep ${harbor_fqdn}/kubernetes | awk '{ print $1":"$2 }'); do
     echo "===== ${image} ====="
     docker push ${image}
@@ -675,17 +705,94 @@
   done
   ```
 
+## cri-dockerd の pause image 指定
 
-## Kubernetes クラスタの起動
+- 実施対象サーバ：ControlPlane#01 のみ **(注意)**
 
-- 実施対象サーバ：ControlPlane#1 のみで実施 **(注意)**
+  ```bash
+  kubeadm config images list | grep pause
+  ```
+
+  - pause コンテナのバージョンをメモする。以下例では `3.9`
+
+    ```text
+    registry.k8s.io/pause:3.9
+    ```
+
+
+- 実施対象サーバ：5台全て
+
+  ```bash
+  # 上で確認した pause コンテナのバージョンを変数に設定する(要変更)
+  pause_version=3.9
+  
+  # backup
+  cp -p /etc/systemd/system/cri-docker.service ~/cri-docker.service.bak
+
+  # pause image を harbor で保持するイメージを使用するよう指定
+  sed -i -e "s,^\(ExecStart=.*\)$,\1 --pod-infra-container-image ${harbor_fqdn}/kubernetes/pause:${pause_version},g" /etc/systemd/system/cri-docker.service
+  diff -u ~/cri-docker.service.bak /etc/systemd/system/cri-docker.service
+  ```
+
+  - 確認観点： `ExecStart=` の末尾に `--pod-infra-container-image <HarborのFQDN>/kubernetes/pause:3.9` が追加されていること
+
+    ```diff
+    --- /root/cri-docker.service.org        2024-01-01 21:12:05.005085507 +0900
+    +++ /etc/systemd/system/cri-docker.service      2024-01-01 21:14:16.586800334 +0900
+    @@ -7,7 +7,7 @@
+    
+     [Service]
+     Type=notify
+    -ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd://
+    +ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd:// --pod-infra-container-image harbor2.home.ndeguchi.com/kubernetes/pause:3.9
+     ExecReload=/bin/kill -s HUP $MAINPID
+     TimeoutSec=0
+     RestartSec=2
+    ```
+
+  ```bash
+  systemctl daemon-reload
+  systemctl status  cri-docker.socket --no-pager
+  systemctl restart cri-docker.socket
+  systemctl status  cri-docker.socket --no-pager
+  ```
+
+  - 確認観点： `Active: active (listening)` が出力されること
+
+    ```text
+    ● cri-docker.socket - CRI Docker Socket for the API
+         Loaded: loaded (/etc/systemd/system/cri-docker.socket; disabled; preset: disabled)
+         Active: active (listening) since Mon 2024-01-01 21:17:12 JST; 2min 37s ago
+       Triggers: ● cri-docker.service
+         Listen: /run/cri-dockerd.sock (Stream)
+          Tasks: 0 (limit: 4632)
+         Memory: 0B
+            CPU: 514us
+         CGroup: /system.slice/cri-docker.socket
+    
+     1月 01 21:17:12 k8s-worker02 systemd[1]: Starting cri-docker.socket - CRI Docker Socket for the API...
+     1月 01 21:17:12 k8s-worker02 systemd[1]: Listening on cri-docker.socket - CRI Docker Socket for the API.
+    ```
+
+- 参考: [cri-dockerd で pause image を指定](https://kubernetes.io/ja/docs/setup/production-environment/container-runtimes/#override-pause-image-cri-dockerd-mcr "サンドボックス(pause)イメージを上書きする")
+
+
+
+## Kubernetes クラスタ構築
+
+### 起動 (ControlPlane#01)
+
+- 実施対象サーバ：ControlPlane#01 のみ **(注意)**
+
   ```bash
   kubeadm init --control-plane-endpoint "${k8s_vip_hn}:8443" \
     --upload-certs --pod-network-cidr 10.20.0.0/16 \
     --image-repository=${harbor_fqdn}/kubernetes \
     --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
   ```
-  - 上記コマンドの実行に成功すると、標準出力の末尾に以下と同様の情報が出力される
+
+  - 上記コマンドの実行に成功すると末尾に以下と同様の情報が出力される。この情報は後の作業で使用するためメモする。
+
     ```text
     <出力例>
     Your Kubernetes control-plane has initialized successfully!
@@ -720,84 +827,90 @@
             --discovery-token-ca-cert-hash sha256:e1b16fb333f1cb2e10e2ff9d70e8d6921c1ca997512bdf29775319c3e3b0c47c
     ```
 
-上記で出力されたコマンドは後の作業で使用するため控えておく。
 
+### ControlPlane 追加 (ControlPlane#02,03)
 
-## ControlPlane 追加
+- 実施対象サーバ：ControlPlane#02,03 の2台のみ **(注意)** \
+  上記、「起動 (ControlPlane#01)」で出力された control-plane node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
 
-実施対象サーバ：ControlPlane#2,3 の2台のみで実施 **(注意)**
+  ```bash
+  # コマンド例
+  kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
+    --discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
+    --control-plane --certificate-key 4ef92e160ed8d207f43397611c54ad612c752efb6b699c1fc7d250c2ecfe912f \
+    --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
+  ```
 
-上記、「Kubernetes クラスタの起動」で出力された control-plane node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
+  - 確認観点： `This node has joined the cluster and a new control plane instance was created` が出力されること
 
-```bash
-# コマンド例
-kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
---discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
---control-plane --certificate-key 4ef92e160ed8d207f43397611c54ad612c752efb6b699c1fc7d250c2ecfe912f \
---cri-socket=unix:///var/run/cri-dockerd.sock --v 9
-```
+    ```text
+    <出力例>
+    This node has joined the cluster and a new control plane instance was created:
+    
+    * Certificate signing request was sent to apiserver and approval was received.
+    * The Kubelet was informed of the new secure connection details.
+    * Control plane label and taint were applied to the new node.
+    * The Kubernetes control plane instances scaled up.
+    * A new etcd member was added to the local/stacked etcd cluster.
+    
+    To start administering your cluster from this node, you need to run the following as a regular user:
+    
+    	mkdir -p $HOME/.kube
+    	sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    
+    Run 'kubectl get nodes' to see this node join the cluster.
+    ```
 
-```text
-<出力例>
-This node has joined the cluster and a new control plane instance was created:
+### WorkerNode 追加 (WorkerNode#01,02)
 
-* Certificate signing request was sent to apiserver and approval was received.
-* The Kubelet was informed of the new secure connection details.
-* Control plane label and taint were applied to the new node.
-* The Kubernetes control plane instances scaled up.
-* A new etcd member was added to the local/stacked etcd cluster.
+- 実施対象サーバ：WorkerNode#01,02 の2台のみ **(注意)** \
+  上記、「起動 (ControlPlane#01)」で出力された worker node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
 
-To start administering your cluster from this node, you need to run the following as a regular user:
+  ```bash
+  # コマンド例
+  kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
+    --discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
+    --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
+  ```
 
-	mkdir -p $HOME/.kube
-	sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  - 確認観点： `This node has joined the cluster` が出力されること
 
-Run 'kubectl get nodes' to see this node join the cluster.
-```
+    ```text
+    <出力例>
+    This node has joined the cluster:
+    * Certificate signing request was sent to apiserver and a response was received.
+    * The Kubelet was informed of the new secure connection details.
+    
+    Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+    ```
 
-## WorkerNode 追加
+## kubectl で接続
 
-実施対象サーバ：WorkerNode#1,2 の2台のみで実施 **(注意)**
+### ControlPlane
 
-上記、「Kubernetes クラスタの起動」で出力された worker node を追加するコマンドにオプション `--cri-socket=unix:///var/run/cri-dockerd.sock --v 9` を追加して実行する。
+- 実施対象サーバ：ControlPlane#01,02,03 の3台のみ **(注意)**
 
-```bash
-kubeadm join vip-k8s-master.home.ndeguchi.com:8443 --token 3p4xvv.573ssbuf5cj9a7ix \
-  --discovery-token-ca-cert-hash sha256:4893db001a479cfe8913afa2fab4ecc7a6278ceebdf160910a1b291c2625b206 \
-  --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
-```
+  ```bash
+  mkdir -p $HOME/.kube
+  cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  kubectl get node
+  ```
 
-```text
-<出力例>
-This node has joined the cluster:
-* Certificate signing request was sent to apiserver and a response was received.
-* The Kubelet was informed of the new secure connection details.
+  - 確認観点：ノードの一覧が表示されること。 \
+    STATUS が NotReadyだが現時点では問題なし
 
-Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
-```
+    ```text
+    <出力例>
+    NAME           STATUS     ROLES           AGE     VERSION
+    k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
+    k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
+    k8s-cp03       NotReady   control-plane   87s     v1.28.3
+    k8s-worker01   NotReady   <none>          66s     v1.28.3
+    k8s-worker02   NotReady   <none>          46s     v1.28.3
+    ```
 
-## kubectl で接続 - ControlPlane
-
-実施対象サーバ：ControlPlane#1,2,3 の3台のみで実施 **(注意)**
-
-```bash
-mkdir -p $HOME/.kube
-cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-kubectl get node
-```
-
-```text
-<出力例：NotReadyだが現時点では問題なし>
-NAME           STATUS     ROLES           AGE     VERSION
-k8s-cp01       NotReady   control-plane   3m49s   v1.28.3
-k8s-cp02       NotReady   control-plane   2m17s   v1.28.3
-k8s-cp03       NotReady   control-plane   87s     v1.28.3
-k8s-worker01   NotReady   <none>          66s     v1.28.3
-k8s-worker02   NotReady   <none>          46s     v1.28.3
-```
-
-## kubectl で接続 - 管理クライアント
+### 管理クライアント
 
 - 実施対象サーバ：管理クライアント **(注意)**
 
@@ -806,15 +919,12 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   mkdir -p $HOME/.kube
   scp root@${k8s_cp01_ip}:/root/.kube/config /root/.kube/config
   ls -l /root/.kube/config
-  ```
-
-  - ファイルが存在すること
-
-  ```bash
+    # -> ファイルが存在すること
+  
   kubectl get node
   ```
 
-  - 以下のように Node の一覧が表示されること。 \
+  - 確認観点：ノードの一覧が表示されること。 \
     STATUS が NotReadyだが現時点では問題なし
 
     ```text
@@ -829,30 +939,32 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
 
 ## CNI (Calico) インストール
 
+### Harbor プロジェクト作成
 
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンから calico の新規プロジェクトを作成
-    
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | calico            |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
+- 実施対象サーバ：管理クライアント **(注意)**
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンから `calico` と `tigera` の新規プロジェクトを2つ作成
 
-    ![img](img/61_harbor_create_calico_project.png)
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | calico            |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
 
-  - `NEW PROJECT` ボタンから tigera の新規プロジェクトを作成
-    
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | tigera            |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
+     ![img](img/61_harbor_create_calico_project.png)
 
-    ![img](img/63_harbor_create_tigera_project.png)
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | tigera            |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
+
+     ![img](img/63_harbor_create_tigera_project.png)
+
+### コンテナイメージ取得
 
 - インターネットからコンテナイメージを取得できるサーバで Calico のコンテナイメージを取得する。 \
   本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
@@ -861,7 +973,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   mkdir -p calico/images
   cd calico/images
   
-  # pull
+  # Pull
   docker pull quay.io/tigera/operator:v1.30.7
   docker pull calico/typha:v3.26.3
   docker pull calico/ctl:v3.26.3
@@ -874,7 +986,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   docker pull calico/csi:v3.26.3
   docker pull calico/node-driver-registrar:v3.26.3
   
-  # save
+  # Save
   docker save quay.io/tigera/operator:v1.30.7       > quay.io_tigera_operator_v1.30.7.tar
   docker save calico/typha:v3.26.3                  > calico_typha_v3.26.3.tar
   docker save calico/ctl:v3.26.3                    > calico_ctl_v3.26.3.tar
@@ -887,7 +999,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   docker save calico/csi:v3.26.3                    > calico_csi_v3.26.3.tar
   docker save calico/node-driver-registrar:v3.26.3  > calico_node-driver-registrar_v3.26.3.tar
 
-  # gzip
+  # Gzip
   gzip quay.io_tigera_operator_v1.30.7.tar
   gzip calico_typha_v3.26.3.tar
   gzip calico_ctl_v3.26.3.tar
@@ -900,10 +1012,11 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   gzip calico_csi_v3.26.3.tar
   gzip calico_node-driver-registrar_v3.26.3.tar
   
-  # list
+  # List
   ls -l
   ```
-  - gzip で圧縮したファイルが存在すること
+
+  - 確認観点：gzip で圧縮したファイルが存在すること
 
     ```text
     -rw-r--r--  1 root  root  39134954  1  1 14:41 calico_apiserver_v3.26.3.tar.gz
@@ -929,28 +1042,31 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   ```bash
   tar -zcvf calico.tar.gz calico
   ls -l calico.tar.gz
+    # -> ファイルが存在すること
   ```
 
-  - ファイル `calico.tar.gz` が存在すること
+### コンテナイメージ転送
 
-- 上記で作成したファイル `calico.tar.gz` を管理クライアントの `/root/` 配下に転送したうえで以下作業を実施する。 \
-  管理クライアントにて作業を実施すること。 **(注意)**
+- 上記で作成したファイル `calico.tar.gz` を管理クライアントの `/root/` 直下に転送する。
+
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
-  cd ~/
+  cd /root/
   ls -l calico.tar.gz
-  ```
-
-  - ファイル `calico.tar.gz` が存在すること
-
-  ```bash
+    # -> ファイルが存在すること
+  
   tar -zxvf calico.tar.gz
-  ls -lR calico
+  ls -ld calico
+    # ディレクトリが存在すること
+  
   cd calico/images/
-  ls -l
+  ll
   ```
 
-  - コンテナイメージの gz ファイルが存在すること
+  - 確認観点：コンテナイメージの gz ファイルが存在すること
 
     ```text
     -rw-r--r--. 1 502 games 39134954  1月  1 14:41 calico_apiserver_v3.26.3.tar.gz
@@ -967,18 +1083,30 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     ```
 
   ```bash
+  # コマンド実行に失敗したことを検知するための関数定義
+  function error_msg(){
+    echo ""
+    echo "================================================"
+    echo "ERROR: $1"
+    echo "================================================"
+    echo ""
+    sleep infinity
+  }
+
   docker images
   
+  # Load
   for f in $(ls); do
     echo "===== ${f} ====="
-    docker load < ${f}
+    docker load < ${f} || error_msg "failed to load image ${f}"
     echo ""
   done
   
+  docker images | grep -e calico -e tigera | wc -l
   docker images | grep -e calico -e tigera
   ```
 
-  - 以下イメージが存在すること
+  - 確認観点：ロードしたコンテナイメージが存在すること
 
     ```text
     quay.io/tigera/operator        v1.30.7   c149c918030e   2 months ago   66.7MB
@@ -995,6 +1123,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     ```
 
   ```bash
+  # Tag
   docker tag quay.io/tigera/operator:v1.30.7       ${harbor_fqdn}/tigera/operator:v1.30.7
   docker tag calico/typha:v3.26.3                  ${harbor_fqdn}/calico/typha:v3.26.3
   docker tag calico/ctl:v3.26.3                    ${harbor_fqdn}/calico/ctl:v3.26.3
@@ -1022,10 +1151,9 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   docker push ${harbor_fqdn}/calico/node-driver-registrar:v3.26.3
   ```
 
-  - GUI で Harbor を開き、 calico プロジェクト と tigera プロジェクトにコンテナイメージが存在することを確認する
-    ![img](img/62_harbor_pushed_calico_images.png)
-    ![img](img/64_harbor_pushed_tigera_images.png)
+### Manifest 作成
 
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/calico
@@ -1039,7 +1167,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   diff -u tigera-operator.yaml.org tigera-operator.yaml
   ```
 
-  - レジストリが quay.io から harbor に変更されていること
+  - 確認観点：レジストリが quay.io から harbor に変更されていること
 
     ```diff
     --- tigera-operator.yaml.org    2024-01-01 15:07:11.271531373 +0900
@@ -1123,6 +1251,10 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
            nodeSelector: all()
     ```
 
+### インストール
+
+- 実施対象サーバ：管理クライアント **(注意)**
+
   ```bash
   kubectl create -f custom-resources.yaml
   watch kubectl get pods -n calico-system
@@ -1148,12 +1280,9 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     csi-node-driver-xtgnb                      2/2     Running   0          58m
     ```
 
-## Kubernetes 正常性確認
+### 正常性確認
 
-
-
-- Kubernetes クラスタが正常に動作していることを確認する。 \
-  実施対象サーバ：管理クライアント **(注意)**
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   kubectl get node
@@ -1208,21 +1337,26 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     tigera-operator   tigera-operator-94d7f7696-99xml            1/1     Running   2 (9m20s ago)   10m
     ```
 
-## MetalLB のインストール
+## MetalLB インストール
 
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンから metallb の新規プロジェクトを作成
-    
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | metallb           |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
+### Harbor プロジェクト作成
 
-    ![img](img/65_harbor_create_metallb_repository.png)
+- 実施対象サーバ：管理クライアント **(注意)**
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
 
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | metallb           |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
+
+     ![img](img/65_harbor_create_metallb_repository.png)
+
+
+### コンテナイメージ取得
 
 - インターネットからコンテナイメージを取得できるサーバで MetalLB のコンテナイメージを取得する。 \
   本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
@@ -1231,19 +1365,19 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   mkdir -p metallb/images
   cd metallb/images
 
-  # pull
+  # Pull
   docker pull quay.io/metallb/controller:v0.13.12
   docker pull quay.io/metallb/speaker:v0.13.12
 
-  # save
+  # Save
   docker save quay.io/metallb/controller:v0.13.12 > quay.io_metallb_controller_v0.13.12.tar
   docker save quay.io/metallb/speaker:v0.13.12    > quay.io_metallb_speaker_v0.13.12.tar
 
-  # gzip
+  # Gzip
   gzip quay.io_metallb_controller_v0.13.12.tar
   gzip quay.io_metallb_speaker_v0.13.12.tar
   
-  # list
+  # List
   ls -l
   ```
   - gzip で圧縮したファイルが存在すること
@@ -1256,37 +1390,35 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   ```bash
   cd ../../
   ls -ld metallb/
-  ```
-
-  - ディレクトリ `metallb` が存在すること
-
-  ```bash
+    # -> ディレクトリが存在すること
+  
   tar -zcvf metallb.tar.gz metallb
   ls -l metallb.tar.gz
+    # -> ファイルが存在すること
   ```
 
-  - ファイル `metallb.tar.gz` が存在すること
+### コンテナイメージ転送
 
+- 上記で作成したファイル `metallb.tar.gz` を管理クライアントの `/root/` 直下に転送する。
 
+### コンテナイメージを Harbor に Push
 
-- 上記で作成したファイル `metallb.tar.gz` を管理クライアントの `/root/` 配下に転送したうえで以下作業を実施する。 \
-  管理クライアントにて作業を実施すること。 **(注意)**
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/
   ls -l metallb.tar.gz
-  ```
-
-  - ファイル `metallb.tar.gz` が存在すること
-
-  ```bash
+    # -> ファイルが存在すること
+  
   tar -zxvf metallb.tar.gz
-  ls -lR metallb
+  ls -ld metallb
+    # ディレクトリが存在すること
+  
   cd metallb/images/
-  ls -l
+  ll
   ```
 
-  - コンテナイメージの gz ファイルが存在すること
+  - 確認観点：コンテナイメージの tar.gz ファイルが存在すること
 
     ```text
     -rw-r--r--. 1 502 games 28122741  1月  1 15:36 quay.io_metallb_controller_v0.13.12.tar.gz
@@ -1294,26 +1426,37 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     ```
 
   ```bash
+  # コマンド実行に失敗したことを検知するための関数定義
+  function error_msg(){
+    echo ""
+    echo "================================================"
+    echo "ERROR: $1"
+    echo "================================================"
+    echo ""
+    sleep infinity
+  }
+  
   docker images
   
+  # Load
   for f in $(ls); do
     echo "===== ${f} ====="
-    docker load < ${f}
+    docker load < ${f} || error_msg "failed to load image ${f}"
     echo ""
   done
   
-  docker images | grep -e metallb
+  docker images | grep metallb
   ```
 
-  - 以下イメージが存在すること
+  - 確認観点：ロードしたコンテナイメージが存在すること
 
     ```text
-    quay.io/metallb/speaker                                  v0.13.12   94c5f9675e59   2 months ago   118MB
-    quay.io/metallb/controller                               v0.13.12   2991becceb02   2 months ago   65.7MB
+    quay.io/metallb/speaker      v0.13.12   94c5f9675e59   2 months ago   118MB
+    quay.io/metallb/controller   v0.13.12   2991becceb02   2 months ago   65.7MB
     ```
 
   ```bash
-  # tag
+  # Tag
   docker tag quay.io/metallb/speaker:v0.13.12     ${harbor_fqdn}/metallb/speaker:v0.13.12
   docker tag quay.io/metallb/controller:v0.13.12  ${harbor_fqdn}/metallb/controller:v0.13.12
   
@@ -1324,12 +1467,9 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   docker push ${harbor_fqdn}/metallb/controller:v0.13.12
   ```
 
-  - GUI で Harbor を開き、 metallb プロジェクトにコンテナイメージが存在することを確認する
-    ![img](img/66_harbor_pushed_metallb_images.png)
+### strictARP 変更
 
-
-- MetalLBをデプロイする \
-  作業実施サーバ：管理クライアント **(注意)**
+- 作業実施サーバ：管理クライアント **(注意)**
 
   ```bash
   kubectl get configmap kube-proxy -n kube-system -o yaml
@@ -1340,7 +1480,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     kubectl diff -f - -n kube-system
   ```
 
-  - 以下の通り strictARP の false / true のみが差分であること
+  - 確認観点：strictARP の false / true のみが差分であること
 
     ```diff
     --- /tmp/LIVE-2182416446/v1.ConfigMap.kube-system.kube-proxy    2023-11-13 13:30:37.101848994 +0900
@@ -1361,22 +1501,33 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   kubectl get configmap kube-proxy -n kube-system -o yaml | \
     sed -e "s/strictARP: false/strictARP: true/" | \
     kubectl apply -f - -n kube-system
-  # worning が出力されるが問題無し。末尾に "configmap/kube-proxy configured" が出力されること。
+    # -> 末尾に "configmap/kube-proxy configured" が出力されること。
+    #    worning が出力されるが問題無し。
   
   kubectl get configmap kube-proxy -n kube-system -o yaml
-  
-  # Manifestファイル修正。コンテナイメージを quay.io から harbor に変更
-  cd ~/metallb
-  mkdir manifest
-  cd manifest
+  ```
+
+### Manifest ファイル作成
+ 
+- 作業実施サーバ：管理クライアント **(注意)**
+
+  ```bash
+  mkdir ~/metallb/manifest
+  cd ~/metallb/manifest
   
   curl -O https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+  ll metallb-native.yaml
+    # -> ファイルが存在すること
+  
   cp -p metallb-native.yaml metallb-native.yaml.org
+  ll metallb-native.yaml*
+  
+  # quay.io から harbor に変更
   sed -i -e "s/image: quay.io/image: ${harbor_fqdn}/g" metallb-native.yaml
   diff -u metallb-native.yaml.org metallb-native.yaml
   ```
 
-  - レジストリが quay.io から harbor に変更されていること
+  - 確認観点：レジストリが quay.io から harbor に変更されていること
 
     ```diff
     --- metallb-native.yaml.org     2024-01-01 15:48:13.462351205 +0900
@@ -1400,6 +1551,10 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
                failureThreshold: 3
                httpGet:
     ```
+
+### インストール
+
+- 作業実施サーバ：管理クライアント **(注意)**
 
   ```bash
   kubectl create -f metallb-native.yaml
@@ -1451,8 +1606,11 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
     speaker-szz74                 1/1     Running   0          39s
     ```
 
+### IP Pool 作成
+
+- 作業実施サーバ：管理クライアント **(注意)**
+
   ```bash
-  # IP Pool を作成する
   cd ~/metallb/manifest
   vim ip-pool.yaml
   ```
@@ -1486,8 +1644,7 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   kubectl apply -f ip-pool.yaml
   ```
 
-
-## Kubernetes 動作確認
+### 動作確認 (curl)
 
 - 実施対象サーバ：管理クライアント **(注意)**
 
@@ -1510,125 +1667,131 @@ k8s-worker02   NotReady   <none>          46s     v1.28.3
   kubectl get svc
   ```
 
-```text
-<出力例>
-NAME         TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE
-kubernetes   ClusterIP      10.96.0.1        <none>           443/TCP        65m
-nginx        LoadBalancer   10.103.163.113   192.168.14.200   80:32208/TCP   5s
-```
+  - 出力例
 
-上記コマンドの出力結果より `nginx` の `EXTERNAL-IP` を確認し、以下の通り curl コマンドで取得する。（上記の例では `192.168.14.200` )
+    ```text
+    NAME         TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE
+    kubernetes   ClusterIP      10.96.0.1        <none>           443/TCP        65m
+    nginx        LoadBalancer   10.103.163.113   192.168.14.200   80:32208/TCP   5s
+    ```
 
-```bash
-# CLI からアクセス確認
-curl -v --noproxy "*" http://192.168.14.200
-```
+  上記コマンドの出力結果から `nginx` の `EXTERNAL-IP` を確認し、以下の通り curl コマンドを実行する。（上記の例では `192.168.14.200` )
 
-以下のように "Welcome to nginx!" のページが取得できることを確認する。
+  ```bash
+  # IPアドレスは要変更
+  curl -v --noproxy "*" http://192.168.14.200
+  ```
 
-```
-*   Trying 192.168.14.200:80...
-* Connected to 192.168.14.200 (192.168.14.200) port 80 (#0)
-> GET / HTTP/1.1
-> Host: 192.168.14.200
-> User-Agent: curl/7.85.0
-> Accept: */*
->
-* Mark bundle as not supporting multiuse
-< HTTP/1.1 200 OK
-< Server: nginx/1.25.3
-< Date: Mon, 13 Nov 2023 05:05:01 GMT
-< Content-Type: text/html
-< Content-Length: 615
-< Last-Modified: Tue, 24 Oct 2023 13:46:47 GMT
-< Connection: keep-alive
-< ETag: "6537cac7-267"
-< Accept-Ranges: bytes
-<
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-html { color-scheme: light dark; }
-body { width: 35em; margin: 0 auto;
-font-family: Tahoma, Verdana, Arial, sans-serif; }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, the nginx web server is successfully installed and
-working. Further configuration is required.</p>
+  - 確認観点："Welcome to nginx!" のページが取得できること
 
-<p>For online documentation and support please refer to
-<a href="http://nginx.org/">nginx.org</a>.<br/>
-Commercial support is available at
-<a href="http://nginx.com/">nginx.com</a>.</p>
+    ```
+    *   Trying 192.168.14.200:80...
+    * Connected to 192.168.14.200 (192.168.14.200) port 80 (#0)
+    > GET / HTTP/1.1
+    > Host: 192.168.14.200
+    > User-Agent: curl/7.85.0
+    > Accept: */*
+    >
+    * Mark bundle as not supporting multiuse
+    < HTTP/1.1 200 OK
+    < Server: nginx/1.25.3
+    < Date: Mon, 13 Nov 2023 05:05:01 GMT
+    < Content-Type: text/html
+    < Content-Length: 615
+    < Last-Modified: Tue, 24 Oct 2023 13:46:47 GMT
+    < Connection: keep-alive
+    < ETag: "6537cac7-267"
+    < Accept-Ranges: bytes
+    <
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>Welcome to nginx!</title>
+    <style>
+    html { color-scheme: light dark; }
+    body { width: 35em; margin: 0 auto;
+    font-family: Tahoma, Verdana, Arial, sans-serif; }
+    </style>
+    </head>
+    <body>
+    <h1>Welcome to nginx!</h1>
+    <p>If you see this page, the nginx web server is successfully installed and
+    working. Further configuration is required.</p>
+    
+    <p>For online documentation and support please refer to
+    <a href="http://nginx.org/">nginx.org</a>.<br/>
+    Commercial support is available at
+    <a href="http://nginx.com/">nginx.com</a>.</p>
+    
+    <p><em>Thank you for using nginx.</em></p>
+    </body>
+    </html>
+    * Connection #0 to host 192.168.14.200 left intact
+    ```
 
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
-* Connection #0 to host 192.168.14.200 left intact
-```
+### 動作確認 (Firefox)
 
-### GUIから画面確認
-
-管理クライアントの GUI からも nginx にアクセスできることを確認する。
-
-- Firefox で上記で確認した nginx の EXTERNAL-IP にアクセスし nginx の画面を表示できることを確認する。
+- 管理クライアントの GUI (Firefox) からも nginx にアクセスできることを確認する。
   - ![img](img/21_Firefox_nginx.png)
 
-### 削除
+### 動作確認事後作業
 
-```bash
-kubectl get deployment
-kubectl delete deployment nginx
-kubectl get deployment
+- 実施対象サーバ：管理クライアント **(注意)**
 
-kubectl get service
-kubectl delete service nginx
-kubectl get service
-```
+  ```bash
+  kubectl get deployment
+  kubectl delete deployment nginx
+  kubectl get deployment
+  
+  kubectl get service
+  kubectl delete service nginx
+  kubectl get service
+  ```
 
-## Contour のインストール
+## Contour インストール
 
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンから contour の新規プロジェクトを作成
+### Harbor プロジェクト作成
 
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | contour           |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
+- 実施対象サーバ：管理クライアント **(注意)**
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
 
-    ![img](img/67_harbor_create_contour_repository.png)
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | contour           |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
 
-- インターネットからコンテナイメージを取得できるサーバで Contour のコンテナイメージを取得する。 \
+     ![img](img/67_harbor_create_contour_repository.png)
+
+### コンテナイメージリスト取得
+
+- インターネットからコンテナイメージを取得できるサーバで Kubernetes のコンテナイメージを取得する。 \
   本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
 
   ```bash
   mkdir -p contour/images
   cd contour/images
 
-  # pull
+  # Pull
   docker pull docker.io/envoyproxy/envoy:v1.28.0
   docker pull ghcr.io/projectcontour/contour:v1.27.0
 
-  # save
+  # Save
   docker save docker.io/envoyproxy/envoy:v1.28.0     > docker.io_envoyproxy_envoy_v1.28.0.tar
   docker save ghcr.io/projectcontour/contour:v1.27.0 > ghcr.io_projectcontour_contour_v1.27.0.tar
 
-  # gzip
+  # Gzip
   gzip docker.io_envoyproxy_envoy_v1.28.0.tar
   gzip ghcr.io_projectcontour_contour_v1.27.0.tar
   
-  # list
+  # List
   ls -l
   ```
 
-  - gzip で圧縮したファイルが存在すること
+  - 確認観点：gzip で圧縮したファイルが存在すること
 
     ```text
     -rw-r--r--  1 root  root  60267305  1  1 16:47 docker.io_envoyproxy_envoy_v1.28.0.tar.gz
@@ -1638,36 +1801,35 @@ kubectl get service
   ```bash
   cd ../../
   ls -ld contour/
-  ```
-
-  - ディレクトリ `contour` が存在すること
-
-  ```bash
+    # -> ディレクトリ `contour` が存在すること
+  
   tar -zcvf contour.tar.gz contour
   ls -l contour.tar.gz
+    # -> ファイルが存在すること
   ```
 
-  - ファイル `contour.tar.gz` が存在すること
+### コンテナイメージ転送
 
+- 上記で作成したファイル `contour.tar.gz` を管理クライアントの `/root/` 直下に転送する。
 
-- 上記で作成したファイル `contour.tar.gz` を管理クライアントの `/root/` 配下に転送したうえで以下作業を実施する。 \
-  管理クライアントにて作業を実施すること。 **(注意)**
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/
   ls -l contour.tar.gz
-  ```
-
-  - ファイル `contour.tar.gz` が存在すること
-
-  ```bash
+    # -> ファイルが存在すること
+  
   tar -zxvf contour.tar.gz
-  ls -lR contour
+  ls -ld contour
+    # ディレクトリが存在すること
+  
   cd contour/images/
-  ls -l
+  ll
   ```
 
-  - コンテナイメージの gz ファイルが存在すること
+  - 確認観点：コンテナイメージの gz ファイルが存在すること
 
     ```text
     -rw-r--r--. 1 502 games 60267305  1月  1 16:47 docker.io_envoyproxy_envoy_v1.28.0.tar.gz
@@ -1675,11 +1837,22 @@ kubectl get service
     ```
 
   ```bash
+  # コマンド実行に失敗したことを検知するための関数定義
+  function error_msg(){
+    echo ""
+    echo "================================================"
+    echo "ERROR: $1"
+    echo "================================================"
+    echo ""
+    sleep infinity
+  }
+
   docker images
   
+  # Load
   for f in $(ls); do
     echo "===== ${f} ====="
-    docker load < ${f}
+    docker load < ${f} || error_msg "failed to load image ${f}"
     echo ""
   done
   
@@ -1689,29 +1862,29 @@ kubectl get service
   - 以下イメージが存在すること
 
     ```text
-    ghcr.io/projectcontour/contour                           v1.27.0    9440412ccd1a   2 months ago   50.7MB
-    envoyproxy/envoy                                         v1.28.0    297d276929fd   2 months ago   165MB
+    ghcr.io/projectcontour/contour   v1.27.0    9440412ccd1a   2 months ago   50.7MB
+    envoyproxy/envoy                 v1.28.0    297d276929fd   2 months ago   165MB
     ```
 
   ```bash
-  # tag
+  # Tag
   docker tag ghcr.io/projectcontour/contour:v1.27.0 ${harbor_fqdn}/contour/contour:v1.27.0
   docker tag envoyproxy/envoy:v1.28.0               ${harbor_fqdn}/contour/envoy:v1.28.0
   
   docker images | grep -e contour -e envoy | sort
   
-  # push
+  # Push
   docker push ${harbor_fqdn}/contour/contour:v1.27.0
   docker push ${harbor_fqdn}/contour/envoy:v1.28.0
   ```
 
-  - GUI で Harbor を開き、 contour プロジェクトにコンテナイメージが存在することを確認する
-    ![img](img/68_harbor_pushed_contour_images.png)
+### Manifest 作成
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
-  cd ~/contour/
-  mkdir manifest
-  cd manifest
+  mkdir ~/contour/manifest
+  cd ~/contour/manifest
   curl -O https://raw.githubusercontent.com/projectcontour/contour/release-1.27/examples/render/contour.yaml
   cp -p contour.yaml contour.yaml.org
   
@@ -1721,7 +1894,7 @@ kubectl get service
   diff -u contour.yaml.org contour.yaml
   ```
 
-  - 差分として以下が出力されること
+  - 確認観点：レジストリが ghcr.io, docker.io から harbor に変更されていること
 
     ```diff
     --- contour.yaml.org    2024-01-01 16:57:16.310751864 +0900
@@ -1773,6 +1946,10 @@ kubectl get service
              volumeMounts:
     ```
 
+### インストール
+
+- 実施対象サーバ：管理クライアント **(注意)**
+
   ```bash
   kubectl apply -f contour.yaml
   watch kubectl get pods -n projectcontour
@@ -1794,7 +1971,7 @@ kubectl get service
   kubectl get svc -n projectcontour
   ```
 
-  - `contour` と `envoy` が存在し、 `envoy` には `EXTERNAL-IP` が付与されていることを確認する。
+  - 確認観点：`contour` と `envoy` が存在し、 `envoy` には `EXTERNAL-IP` が付与されていること
 
     ```text
     <出力例>
@@ -1805,233 +1982,237 @@ kubectl get service
 
 ### DNS 登録
 
-上記で確認した `envoy` の `EXTERNAL-IP` を DNS サーバに登録する。
-本手順では以下をDNS登録したものとして手順を記載するため、適宜読み替えて実施すること。
+- 上記で確認した `envoy` の `EXTERNAL-IP` を DNS サーバに登録する。 \
+  本手順では以下をDNS登録したものとして手順を記載するため、適宜読み替えて実施すること。
 
-| IP | Domain Name |
-| :---: | :---: |
-| 192.168.14.201 | vmw-portal.home.ndeguchi.com |
+  | IP             | Domain Name                  |
+  | :---           | :---                         |
+  | 192.168.14.201 | vmw-portal.home.ndeguchi.com |
 
 
 ### /etc/hosts 登録
 
-実施対象サーバ：管理クライアント (注意)
+- 実施対象サーバ：管理クライアント (注意)
 
-```bash
-# 後の作業を効率化するため、 DNS サーバに登録した envoy の FQDN を環境変数に設定する。
-cat <<EOF >> ~/.bashrc
-export envoy_fqdn="vmw-portal.home.ndeguchi.com"
-export envoy_ip="192.168.14.201"
-EOF
+  ```bash
+  # 後の作業を効率化するため、 DNS サーバに登録した envoy の FQDN を環境変数に設定する。
+  cat <<EOF >> ~/.bashrc
+  export envoy_fqdn="vmw-portal.home.ndeguchi.com"
+  export envoy_ip="192.168.14.201"
+  EOF
+  
+  cat ~/.bashrc
+  source ~/.bashrc
+  echo ${envoy_fqdn}
+    # -> 上記で設定した値が出力されること
+  
+  echo ${envoy_ip}
+    # -> 上記で設定した値が出力されること
+  
+  cat <<EOF >> /etc/hosts
+  ${envoy_ip} ${envoy_fqdn}
+  EOF
+  
+  cat /etc/hosts
+  
+  nslookup ${envoy_fqdn}
+  ```
 
-cat ~/.bashrc
-source ~/.bashrc
-echo ${envoy_fqdn}
-  # -> 上記で設定した値が出力されること
+  - 確認観点：名前解決ができること
 
-echo ${envoy_ip}
-  # -> 上記で設定した値が出力されること
-
-cat <<EOF >> /etc/hosts
-${envoy_ip} ${envoy_fqdn}
-EOF
-
-cat /etc/hosts
-
-nslookup ${envoy_fqdn}
-```
-
-/etc/hosts 登録後のため名前解決ができることを確認する
-
-```text
-<出力例>
-Server:         127.0.0.53
-Address:        127.0.0.53#53
-
-Name:   vmw-portal.home.ndeguchi.com
-Address: 192.168.14.201
-```
+    ```text
+    <出力例>
+    Server:         127.0.0.53
+    Address:        127.0.0.53#53
+    
+    Name:   vmw-portal.home.ndeguchi.com
+    Address: 192.168.14.201
+    ```
 
 ### 動作確認
 
-実施対象サーバ：管理クライアント (注意)
+- 実施対象サーバ：管理クライアント (注意)
 
-```bash
-echo ${harbor_fqdn}
-  # -> Harbor の FQDN が出力されること
+  ```bash
+  echo ${harbor_fqdn}
+    # -> Harbor の FQDN が出力されること
+  
+  cd
+  ```
 
-cd
-```
-
-```yaml
-# httpproxy の動作確認を行うための yaml ファイルを作成
-cat <<EOF > httpproxy-test.yaml
----
-apiVersion: projectcontour.io/v1
-kind: HTTPProxy
-metadata:
-  name: httpproxy-test
-spec:
-  virtualhost:
-    fqdn: ${envoy_fqdn}
-  routes:
-    - conditions:
-      - prefix: /nginx-01/
-      services:
-        - name: nginx-01
-          port: 80
-      pathRewritePolicy:
-        replacePrefix:
-        - replacement: /
-    - conditions:
-      - prefix: /nginx-02/
-      services:
-        - name: nginx-02
-          port: 80
-      pathRewritePolicy:
-        replacePrefix:
-        - replacement: /
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: nginx-01
-  name: nginx-01
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
+  ```yaml
+  # httpproxy の動作確認を行うための yaml ファイルを作成
+  cat <<EOF > httpproxy-test.yaml
+  ---
+  apiVersion: projectcontour.io/v1
+  kind: HTTPProxy
+  metadata:
+    name: httpproxy-test
+  spec:
+    virtualhost:
+      fqdn: ${envoy_fqdn}
+    routes:
+      - conditions:
+        - prefix: /nginx-01/
+        services:
+          - name: nginx-01
+            port: 80
+        pathRewritePolicy:
+          replacePrefix:
+          - replacement: /
+      - conditions:
+        - prefix: /nginx-02/
+        services:
+          - name: nginx-02
+            port: 80
+        pathRewritePolicy:
+          replacePrefix:
+          - replacement: /
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
       app: nginx-01
-  strategy: {}
-  template:
-    metadata:
-      labels:
+    name: nginx-01
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
         app: nginx-01
-    spec:
-      containers:
-      - image: ${harbor_fqdn}/library/nginx:latest
-        name: nginx
-        resources: {}
-        lifecycle:
-          postStart:
-            exec:
-              command:
-                - sh
-                - -c
-                - "echo '<h1>nginx-01</h1>' > /usr/share/nginx/html/index.html"
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: nginx-01
-  name: nginx-01
-spec:
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: nginx-01
-  type: ClusterIP
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: nginx-02
-  name: nginx-02
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
+    strategy: {}
+    template:
+      metadata:
+        labels:
+          app: nginx-01
+      spec:
+        containers:
+        - image: ${harbor_fqdn}/library/nginx:latest
+          name: nginx
+          resources: {}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - "echo '<h1>nginx-01</h1>' > /usr/share/nginx/html/index.html"
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: nginx-01
+    name: nginx-01
+  spec:
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: nginx-01
+    type: ClusterIP
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
       app: nginx-02
-  strategy: {}
-  template:
-    metadata:
-      labels:
+    name: nginx-02
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
         app: nginx-02
-    spec:
-      containers:
-      - image: ${harbor_fqdn}/library/nginx:latest
-        name: nginx
-        resources: {}
-        lifecycle:
-          postStart:
-            exec:
-              command:
-                - sh
-                - -c
-                - "echo '<h1>nginx-02</h1>' > /usr/share/nginx/html/index.html"
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: nginx-02
-  name: nginx-02
-spec:
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: nginx-02
-  type: ClusterIP
-EOF
-```
+    strategy: {}
+    template:
+      metadata:
+        labels:
+          app: nginx-02
+      spec:
+        containers:
+        - image: ${harbor_fqdn}/library/nginx:latest
+          name: nginx
+          resources: {}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - "echo '<h1>nginx-02</h1>' > /usr/share/nginx/html/index.html"
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: nginx-02
+    name: nginx-02
+  spec:
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: nginx-02
+    type: ClusterIP
+  EOF
+  ```
 
-```bash
-cat httpproxy-test.yaml
-kubectl apply -f httpproxy-test.yaml
-kubectl get svc | grep -e "NAME" -e "nginx-"
-```
+  ```bash
+  cat httpproxy-test.yaml
+  kubectl apply -f httpproxy-test.yaml
+  kubectl get svc | grep -e "NAME" -e "nginx-"
+  ```
 
-`nginx-01` と `nginx-02` の Service が存在すること
+  - 確認観点：`nginx-01` と `nginx-02` の Service が存在すること
 
-```text
-<出力例>
-NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
-nginx-01     ClusterIP   10.104.107.221   <none>        80/TCP    71s
-nginx-02     ClusterIP   10.105.14.7      <none>        80/TCP    70s
-```
+    ```text
+    <出力例>
+    NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+    nginx-01     ClusterIP   10.104.107.221   <none>        80/TCP    71s
+    nginx-02     ClusterIP   10.105.14.7      <none>        80/TCP    70s
+    ```
 
-```bash
-kubectl get pod
-```
+  ```bash
+  kubectl get pod
+  ```
 
-`nginx-01-xxxx` と `nginx-02-xxxx` の Pod が存在すること
+  - 確認観点：`nginx-01-xxxx` と `nginx-02-xxxx` の Pod が存在すること
 
-```text
-<出力例>
-NAME                        READY   STATUS    RESTARTS      AGE
-nginx-01-cb5d99757-vb4j7    1/1     Running   0             2m18s
-nginx-02-57dc7974b9-9pds8   1/1     Running   0             2m17s
-```
+    ```text
+    <出力例>
+    NAME                        READY   STATUS    RESTARTS      AGE
+    nginx-01-cb5d99757-vb4j7    1/1     Running   0             2m18s
+    nginx-02-57dc7974b9-9pds8   1/1     Running   0             2m17s
+    ```
 
-```bash
-kubectl get httpproxy
-```
+  ```bash
+  kubectl get httpproxy
+  ```
 
-`httpproxy-test` の httpproxy が存在し、 `STATUS` が `valid` であること。
+  - 確認観点：`httpproxy-test` の httpproxy が存在し、 `STATUS` が `valid` であること。
 
-```text
-<出力例>
-NAME             FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
-httpproxy-test   vmw-portal.home.ndeguchi.com                valid    Valid HTTPProxy
-```
+    ```text
+    <出力例>
+    NAME             FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
+    httpproxy-test   vmw-portal.home.ndeguchi.com                valid    Valid HTTPProxy
+    ```
 
-```bash
-# アクセス確認
-curl --noproxy "*" http://${envoy_fqdn}/nginx-01/
-  # -> "<h1>nginx-01</h1>" が出力されることを確認
+  ```bash
+  # アクセス確認
+  curl --noproxy "*" http://${envoy_fqdn}/nginx-01/
+  ```
 
-curl --noproxy "*" http://${envoy_fqdn}/nginx-02/
-  # -> "<h1>nginx-02</h1>" が出力されることを確認
-```
+  - 確認観点： `<h1>nginx-01</h1>` が出力されること
+  
+  ```bash
+  curl --noproxy "*" http://${envoy_fqdn}/nginx-02/
+  ```
 
-- 管理クライアントの GUI からも httpproxy 経由で nginx にアクセスできることを確認する。
+  - 確認観点： `<h1>nginx-02</h1>` が出力されること
+
+  GUI (Firefox) からも httpproxy 経由で nginx にアクセスできることを確認する。
   - GUI でログインして Firefox の Proxy 設定を開き `プロキシーなしで接続` に Envoy の FQDN を追加する。
     - ![img](img/30_httpproxy_test_firefox_proxy_settings.png)
   - `http://<envoyのFQDN>/nginx-01/` にアクセスし `nginx-01` が表示されることを確認する
@@ -2039,9 +2220,8 @@ curl --noproxy "*" http://${envoy_fqdn}/nginx-02/
   - `http://<envoyのFQDN>/nginx-02/` にアクセスし `nginx-02` が表示されることを確認する
     - ![img](img/32_httpproxy_test_nginx_02.png)
 
-
-```bash
-# 削除
-kubectl delete -f httpproxy-test.yaml
-```
+  ```bash
+  # 動作確認事後作業
+  kubectl delete -f httpproxy-test.yaml
+  ```
 
