@@ -24,7 +24,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 ## kubectl インストール
 
-- 管理クライアントから Kubernetes の操作を行えるようにするため kubectl をインストール
+- 管理クライアントから Kubernetes の操作を行えるようにするため kubectl をインストールする。
 
   ```bash
   # リポジトリ追加
@@ -45,31 +45,38 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 ## GUIインストール
 
-```bash
-adduser portal
-passwd portal
-dnf group list
-dnf install -y @cinnamon-desktop-environment
-systemctl set-default graphical.target
-shutdown -r now
-```
+- 管理クライアントから Web ブラウザで動作確認を行うため、 GUI をインストールする。
 
-- portal
-  - 管理クライアント上に作成する一般ユーザのユーザ名
+  ```bash
+  # ユーザ追加
+  adduser portal
+  passwd portal
+  
+  # GUI インストール
+  dnf group list
+  dnf install -y @cinnamon-desktop-environment
+  systemctl set-default graphical.target
+  
+  # 再起動
+  shutdown -r now
+  ```
 
-再起動後、コンソールに接続し GUI で起動できていることを確認する。 \
-また、上記コマンドで作成した ユーザ・パスワード でGUIにログインできることを確認する。
+  - portal
+    - 管理クライアント上に作成する一般ユーザのユーザ名
 
-- ![img](img/10_GUI_Login.png)
-- ![img](img/11_GUI_Desktop.png)
+  再起動後、コンソールに接続し GUI で起動できていることを確認する。 \
+  また、上記コマンドで作成した ユーザ・パスワード でGUIにログインできることを確認する。
 
-### Firefox Proxy 設定
+  - ![img](img/10_GUI_Login.png)
+  - ![img](img/11_GUI_Desktop.png)
+
+## Firefox Proxy 設定
 
 - Firefox の proxy を設定する
   - HTTPプロキシー: Proxy サーバを指定
   - このプロキシーを HTTPS でも使用する にチェック
-  - プロキシーなしで接続: Harbor の FQDN, 管理NW の NW アドレス
-    - 例：harbor2.home.ndeguchi.com,192.168.14.0/24
+  - プロキシーなしで接続: 管理NW の NW アドレス, Harbor の FQDN を指定
+    - 例：192.168.14.0/24,harbor2.home.ndeguchi.com
 
-  - ![img](img/30_firefox_proxy_settings.png)
+  ![img](img/30_firefox_proxy_settings.png)
 

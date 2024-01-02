@@ -19,12 +19,16 @@
 ## ディスク拡張
 
 - サーバに搭載しているディスク容量の全てが `fedora-root` に割り当てられていない場合は以下を実施して割当てサイズを拡張する。
+
   ```bash
   df -h | grep fedora-root
-    # -> /dev/mapper/fedora-root    15G  1.6G   14G   11% /
+    # -> <出力例>
+    #    /dev/mapper/fedora-root    15G  1.6G   14G   11% /
+    # 15 GB しか割り当てられていないことが分かる
   
   lvextend -An --extents +100%FREE /dev/mapper/fedora-root
-    # -> Size of logical volume fedora/root changed from 15.00 GiB (3840 extents) to <79.00 GiB (20223 extents).
+    # -> <出力例>
+    #    Size of logical volume fedora/root changed from 15.00 GiB (3840 extents) to <79.00 GiB (20223 extents).
     #    WARNING: This metadata update is NOT backed up.
     #    Logical volume fedora/root successfully resized.
   
@@ -32,13 +36,15 @@
     # -> data blocks changed from 3932160 to 20708352
   
   df -h | grep fedora-root
-    # -> /dev/mapper/fedora-root    79G  2.1G   77G    3% /
+    # -> <出力例>
+    #    /dev/mapper/fedora-root    79G  2.1G   77G    3% /
+    # 79 GB まで拡張できた
   ```
-
 
 ## dnfリポジトリキャッシュ更新無効化
 
-- dnf の自動アップデート確認のタイマーを無効化
+- dnf の自動アップデート確認のタイマーを無効化する。
+
   ```bash
   systemctl stop dnf-makecache.timer
   systemctl disable dnf-makecache.timer
@@ -47,7 +53,7 @@
 
 ## 変数定義
 
-- 構築作業を効率化するため、IPやホスト名をbashの環境変数に設定する。
+- 構築作業を効率化するため、 IP / ホスト名 / FQDN をbashの環境変数に設定する。
 
   | 変数名                      | 設定値                                        | 設定例                    | 
   | :---                        | :---                                          | :---                      | 
@@ -119,11 +125,36 @@
   EOF
   
   cat /etc/hosts
-  
-  # 以下、名前解決に成功することを確認する
+  ```
+
+- 名前解決に成功することを確認する
+  ```bash
   nslookup ${harbor_fqdn}
+  ```
+
+  - 確認観点：名前解決に成功すること
+
+    ```text
+    Server:         127.0.0.53
+    Address:        127.0.0.53#53
+    
+    Name:   harbor2.home.ndeguchi.com
+    Address: 192.168.14.40
+    ```
+
+  ```bash
   nslookup ${k8s_vip_hn}
   ```
+
+  - 確認観点：名前解決に成功すること
+
+    ```text
+    Server:         127.0.0.53
+    Address:        127.0.0.53#53
+    
+    Name:   vip-k8s-master
+    Address: 192.168.14.10
+    ```
 
 ## Fedora の Proxy 設定
 
@@ -146,7 +177,7 @@
 
 ## dnf(yum) のリポジトリ指定
 
-- Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ指定を mirror リストから `riken.jp` に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
+- Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ参照先を mirror リストから `riken.jp` に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
   ```bash
   cd /etc/
   
@@ -170,13 +201,15 @@
   # 動作確認
   dnf check-update
   ```
-    - 実行結果の冒頭に以下と同様の内容が出力され、リポジトリから情報を取得できていることを確認する。
-      ```text
-      Fedora 37 - x86_64                        32 MB/s |  82 MB     00:02
-      Fedora Modular 37 - x86_64               7.1 MB/s | 3.8 MB     00:00
-      Fedora 37 - x86_64 - Updates              18 MB/s |  40 MB     00:02
-      Fedora Modular 37 - x86_64 - Updates     1.7 MB/s | 2.9 MB     00:01
-      ```
+
+  - 確認観点：実行結果の冒頭に以下と同様の内容が出力され、リポジトリから情報を取得できていることを確認する。
+
+    ```text
+    Fedora 37 - x86_64                        32 MB/s |  82 MB     00:02
+    Fedora Modular 37 - x86_64               7.1 MB/s | 3.8 MB     00:00
+    Fedora 37 - x86_64 - Updates              18 MB/s |  40 MB     00:02
+    Fedora Modular 37 - x86_64 - Updates     1.7 MB/s | 2.9 MB     00:01
+    ```
 
 ## package update
 
@@ -187,7 +220,7 @@
 
 ## (OPTIONAL) tmux,vim,bash インストール/設定
 
-- tmux, vim, bash の設定ファイルを作成する。
+- tmux のインストール及び tmux, vim, bash の設定ファイルを作成する。
   ```bash
   # tmux インストール
   dnf install -y tmux
@@ -242,15 +275,18 @@
   EOF
   ```
 
+
 ## Firewall 停止
 
 - Firewall を停止する
+
   ```bash
   systemctl stop firewalld
   systemctl disable firewalld
   systemctl status firewalld --no-pager
   ```
-  - `Active: inactive (dead)` が出力されることを確認する。
+
+  - 確認観点：`Active: inactive (dead)` が出力されること
 
 ## SELinux 無効化
 
@@ -264,25 +300,40 @@
 ## NTP 設定
 
 - chrony, ntpstat インストール
+
   ```bash
+  # インストール
   dnf install -y chrony ntpstat
+  
+  # 設定変更
   cp -p /etc/chrony.conf /etc/chrony.conf.org
   ll /etc/chrony.conf*
   vim /etc/chrony.conf
-    # 以下 diff 結果を参考にNTP同期先を指定する
+    # 以下 diff 結果例を参考に NTP 同期先を指定する。
+    # Fedora から参照可能な NTP サーバを指定すること。
+  
+  # 差分確認
   diff -u /etc/chrony.conf.org /etc/chrony.conf
   ```
-  - diff結果例
+
+  - diff 結果例
+
     ```diff
     -pool 2.fedora.pool.ntp.org iburst
     +pool 192.168.14.1 iburst
     ```
+
   ```bash
+  # chronyd 起動
   systemctl enable --now chronyd
+  
+  # 確認
   chronyc sources
   ntpstat
   ```
-  - NTP サーバと同期できていることを確認する。
+
+  - 確認観点：NTP サーバと時刻を同期できていること
+
     ```
     synchronised to NTP server (192.168.14.1) at stratum 3
        time correct to within 17 ms
@@ -292,27 +343,32 @@
 ## 再起動・確認
 
 - 上記設定を反映・確認するためサーバを再起動する
+
   ```bash
   shutdown -r now
   ```
 
 - Proxy 設定確認
+
   ```bash
   env | grep -i proxy | sort
   ```
-  - /etc/environment に設定した Proxy の設定が反映されていること
+
+  - 確認観点：/etc/environment に設定した Proxy の設定が反映されていること
 
 - SELinux 確認
+
   ```bash
   getenforce
   ```
-  - `Permissive` が出力されることを確認する
+
+  - 確認観点：`Permissive` が出力されること
 
 - NTP 同期確認
   ```bash
   ntpstat
   ```
-  - NTP サーバと同期できていることを確認する
+  - 確認観点：NTP サーバと同期できていること
 
 ## Docker Engine インストール・設定
 
@@ -337,13 +393,36 @@
   systemctl status docker --no-pager
   ```
 
-- docker の proxy 設定前に dockerhub からのコンテナイメージ取得に失敗することを確認する
+  - 確認観点： `active (running)` が出力されること
+
+    ```text
+    <出力例>
+    ● docker.service - Docker Application Container Engine
+         Loaded: loaded (/usr/lib/systemd/system/docker.service; enabled; preset: disabled)
+         Active: active (running) since Mon 2024-01-01 21:40:56 JST; 15h ago
+    TriggeredBy: ● docker.socket
+           Docs: https://docs.docker.com
+       Main PID: 1036 (dockerd)
+          Tasks: 11
+         Memory: 571.6M
+            CPU: 7min 6.442s
+         CGroup: /system.slice/docker.service
+                 └─1036 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+    ```
+
+
+- Proxy 設定前確認 \
+  docker の proxy を設定する前に dockerhub からのコンテナイメージ取得に失敗することを確認する。
+
   ```bash
   docker run --rm hello-world
   ```
-  - エラーメッセージが出力されることを確認する
 
-- Proxy 設定
+  - 確認観点:エラーメッセージが出力されること
+
+- Proxy 設定 \
+  docker の proxy を設定する。
+
   ```bash
   mkdir -p /etc/systemd/system/docker.service.d
 
@@ -360,18 +439,22 @@
   systemctl status docker --no-pager
   systemctl show --property=Environment docker --no-pager
   ```
-  - 設定した Proxy の設定が出力されること
+
+  - 確認観点：設定した Proxy の設定が出力されること
     ```text
     <出力例>
     Environment=HTTP_PROXY=http://192.168.13.2:8080 HTTPS_PROXY=http://192.168.13.2:8080 "NO_PROXY=localhost,127.0.0.1,192.168.14.10,192.168.14.11,192.168.14.12,192.168.14.13,192.168.14.21,192.168.14.22,192.168.14.0/24,10.96.0.0/12,10.20.0.0/16,vip-k8s-master,*.svc"
     ```
 
-- 動作確認
+- 動作確認 \
   Proxy 経由で Docker Hub からコンテナイメージを取得できる環境では以下が実行出来ることを確認する。
+
   ```bash
   docker run --rm hello-world
   ```
-  - docker で proxy の設定を行ったことにより、 proxy 経由で dockerhub (インターネット上) からコンテナイメージを取得出来るようになり正常に実行できることを確認する。正常に実行できると以下のように `Hello from Docker!` が出力される。
+
+  - 確認観点：`Hello from Docker!` のメッセージが出力されること
+
     ```text
     Unable to find image 'hello-world:latest' locally
     latest: Pulling from library/hello-world
