@@ -1,6 +1,6 @@
 # PSO Portal Deploy
 
-## Harbor のサーバ上に NFS サーバを構築
+## NFS サーバを構築
 
 - Portal の PostgreSQL のデータを Kubernetes 外部で保持するため、 Harbor を構築している Fedora 上に NFS サーバを構築する。 \
   他の NFS サービスを利用する方針でも問題無いが、 権限 `rw,no_root_squash` を付与すること。 \
@@ -25,7 +25,7 @@
   systemctl status rpcbind nfs-server
   ```
 
-  - rpcbind, nfs-server が `active` であること
+  - 確認観点：rpcbind, nfs-server が `active` であること
 
     ```text
     <出力例>
@@ -59,7 +59,9 @@
      1月 01 22:35:56 harbor2 systemd[1]: Finished nfs-server.service - NFS server and services.
     ```
 
-## dockerhub から Container Image を取得し Harbor へpush
+## コンテナイメージ取得・配置 (PostgreSQL/OpenResty/Curl)
+
+### コンテナイメージリスト取得
 
 - インターネットからコンテナイメージを取得できるサーバで PostgreSQL/OpenResty/Curl のコンテナイメージを取得する。 \
   本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
@@ -92,7 +94,7 @@
   ls -l
   ```
 
-  - gzip で圧縮したファイルが存在すること
+  - 確認観点：gzip で圧縮したファイルが存在すること
 
     ```text
     -rw-r--r--  1 ndeguchi  staff    7052771  1  1 22:50 curl_latest.tar.gz
@@ -103,34 +105,33 @@
   ```bash
   cd ../
   ls -ld common-images/
-  ```
-
-  - ディレクトリ `common-images` が存在すること
-
-  ```bash
+    # -> ディレクトリが存在すること
+  
   tar -zcvf common-images.tar.gz common-images
   ls -l common-images.tar.gz
     # -> ファイルが存在すること
   ```
 
-- 上記で作成したファイル `common-images.tar.gz` を管理クライアントの `/root/` 配下に転送したうえで以下作業を実施する。 \
-  管理クライアントにて作業を実施すること。 **(注意)**
+### コンテナイメージ転送
+
+- 上記で作成したファイル `common-images.tar.gz` を管理クライアントの `/root/` 直下に転送する。
+
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/
   ls -l common-images.tar.gz
-  ```
-
-  - ファイル `common-images.tar.gz` が存在すること
-
-  ```bash
+    # -> ファイルが存在すること
+  
   tar -zxvf common-images.tar.gz
   ls -lR common-images
   cd common-images
   ls -l
   ```
 
-  - コンテナイメージの gz ファイルが存在すること
+  - 確認観点：コンテナイメージの gz ファイルが存在すること
 
     ```text
     -rw-r--r--. 1 502 games   7052771  1月  1 22:50 curl_latest.tar.gz
@@ -141,6 +142,7 @@
   ```bash
   docker images
   
+  # Load
   for f in $(ls); do
     echo "===== ${f} ====="
     docker load < ${f}
@@ -150,7 +152,7 @@
   docker images | grep -e curl -e openresty -e postgres
   ```
 
-  - 以下イメージが存在すること
+  - 確認観点：以下イメージが存在すること
 
     ```text
     curlimages/curl       latest   94fbf6205e5f   3 weeks ago    16.8MB
@@ -159,69 +161,57 @@
     ```
 
   ```bash
-  # tag
+  # Tag
   docker tag curlimages/curl:latest     ${harbor_fqdn}/library/curl:latest
   docker tag openresty/openresty:latest ${harbor_fqdn}/library/openresty:latest
   docker tag postgres:13.10             ${harbor_fqdn}/library/postgres:13.10
 
   docker images | grep -e curl -e openresty -e postgres | sort
   
-  # push
+  # Push
   docker push ${harbor_fqdn}/library/curl:latest
   docker push ${harbor_fqdn}/library/openresty:latest
   docker push ${harbor_fqdn}/library/postgres:13.10
   ```
 
-  - GUI で Harbor を開き、 library プロジェクトに cur, openresty, postgres のコンテナイメージが存在することを確認する
-    ![img](img/69_harbor_pushed_common_images.png)
+## コンテナイメージ取得・配置 (PSO-Portal)
 
+### Harbor プロジェクト作成
 
+- 実施対象サーバ：管理クライアント **(注意)**
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
 
-## Harbor でプロジェクト作成
+     | 項目                 | 値                |
+     | :---                 | :---              |
+     | Project Name         | vmw-pso-portal    |
+     | Access Level         | Public にチェック |
+     | Project quota limits | -1 GiB            |
+     | Proxy Cache          | off               |
 
-作業実施サーバ: 管理クライアント
+     ![img](img/70_harbor_create_vmw-pso-portal_repository.png)
 
-- 管理クライアントに GUI でログイン
-- Firefox を起動し Harbor にアクセス
-- Harbor で新規プロジェクトを作成
-  - Project Name
-    - vmw-pso-portal
-  - Access Level
-    - Public にチェック
-  - Project quota limits
-    - -1
-  - Proxy Cache
-    - Off
+### コンテナイメージを配置するためのディレクトリ作成
 
-## PSO-Portal の Image を Harbor へ push
-
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンから新規プロジェクトを作成
-
-    | 項目                 | 値                |
-    | :---:                | :---:             |
-    | Project Name         | vmw-pso-portal    |
-    | Access Level         | Public にチェック |
-    | Project quota limits | -1 GiB            |
-    | Proxy Cache          | off               |
-
-    ![img](img/70_harbor_create_vmw-pso-portal_repository.png)
-
-- PSO Portal コンテナイメージを配置するためのディレクトリ作成
-  作業対象サーバ：管理クライアント
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   mkdir ~/vmw-pso-portal-images/
   ```
 
-- PSO Portal コンテナイメージのファイルを上記で作成したディレクトリに配置する
+### コンテナイメージ転送
 
-- PSO Portal コンテナイメージを Harbor に Push する。
+- PSO Portal コンテナイメージのファイルを上記で作成したディレクトリ （ 管理クライアントの `/root/vmw-pso-portal-images/` )に配置する
+
+
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/vmw-pso-portal-images/
-  ls -l
+  ll
   ```
 
   - デプロイ対象のコンテナイメージが存在すること
@@ -238,9 +228,19 @@
     ```
 
   ```bash
+  # コマンド実行に失敗したことを検知するための関数定義
+  function error_msg(){
+    echo ""
+    echo "================================================"
+    echo "ERROR: $1"
+    echo "================================================"
+    echo ""
+    sleep infinity
+  }
+  
   images=("be-history" "be-inventory" "be-notice" "be-nsx_lb" "be-portal_auth" "be-portal_auth_seed" "be-vcenter_vm" "bff" "fe")
 
-  # docker 上に古いイメージが存在する場合は削除
+  # docker 上の古いイメージを削除
   for label in ${images[@]}; do
     for image in $(docker images | grep ${label} | awk '{ print $1":"$2 }'); do
       echo "===== ${image} ====="
@@ -249,10 +249,10 @@
     done
   done
 
-  # load
+  # Load
   for f in $(ls *.gz); do
     echo "===== ${f} ====="
-    docker load < ${f}
+    docker load < ${f} || error_msg "failed to load ${f}"
     echo ""
   done
   
@@ -263,34 +263,37 @@
     echo "- src_image = ${src_image}"
     dst_image="${harbor_fqdn}/vmw-pso-portal/${label}:latest"
     echo "- dst_image = ${dst_image}"
-    docker tag ${src_image} ${dst_image}
-    docker images ${dst_image}
+    docker tag ${src_image} ${dst_image} || error_msg "failed to tag ${dst_image}"
+    docker images ${dst_image} || error_msg "failed to list image ${dst_image}"
     echo ""
   done
   
   # push
   for image in $(docker images | grep ${harbor_fqdn}/vmw-pso-portal  | awk '{ print $1":"$2 }'); do
     echo "===== ${image} ====="
-    docker push ${image}
+    docker push ${image} || error_msg "failed to push ${image}"
     echo ""
   done
   ```
 
-- Harbor に push したイメージが存在することを確認する
-  ![img](img/71_harbor_pushed_pso-portal_images.png)
+## Manifests ファイル配置・修正
 
-## Manifest ファイルを取得
+### Manifests を配置するためのディレクトリ作成
 
-- PSO Portal の Manifest ファイルを配置するためのディレクトリ作成
-  作業対象サーバ：管理クライアント
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   mkdir ~/vmw-pso-portal-manifests/
   ```
 
-- PSO Portal の Manifest ファイルを上記で作成したディレクトリに配置する
+### Manifests 転送
 
-- PSO Portal の Manifest ファイルを修正する
+- Manifests ファイルを上記で作成したディレクトリ （ 管理クライアントの `/root/vmw-pso-portal-manifests/` )に配置する
+
+
+### Manifests 修正
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   cd ~/
@@ -326,7 +329,7 @@
   ```bash
   # Backup
   cp -pr cloud-hub-manifests cloud-hub-manifests.bak
-  ll -d cloud-hub-manifests*
+  ll -d cloud-hub-manifests.bak
   cd cloud-hub-manifests
   
   # Harbor の FQDN 変更
@@ -351,7 +354,9 @@
   diff -ru ../cloud-hub-manifests.bak .
   ```
 
-## VMRC 用ユーザ作成
+## VMRC 用ユーザ作成・設定
+
+### vCenter でユーザ作成
 
 - vCenter サーバで VMRC 接続用ユーザを作成する
 
@@ -367,298 +372,326 @@
     - ![img](img/52_vmrc_role_bind.png)
 
 
-## VMRC 用ユーザ情報を設定
+### VMRC 用ユーザ情報を設定
 
-```bash
-# 上で作成した VMRC 用ユーザの Username と Password を設定
-vmrc_username=pso-portal-vmrc@vsphere.local
-vmrc_password=VMware1!
+- 実施対象サーバ：管理クライアント **(注意)**
 
-# base64 encode
-vmrc_username_enc=$(echo -n ${vmrc_username} | base64)
-vmrc_password_enc=$(echo -n ${vmrc_password} | base64)
-
-echo ${vmrc_username_enc}
-echo ${vmrc_password_enc}
-
-echo ${vmrc_username_enc} | base64 -d
-echo ${vmrc_password_enc} | base64 -d
-
-# replace
-sed -i -e "s/VCENTER_USER_FOR_VMRC: .*$/VCENTER_USER_FOR_VMRC: \"${vmrc_username_enc}\"/g" be-vcenter-vm.yaml
-sed -i -e "s/VCENTER_PASSWORD_FOR_VMRC: .*$/VCENTER_PASSWORD_FOR_VMRC: \"${vmrc_password_enc}\"/g" be-vcenter-vm.yaml
-
-# diff
-diff -u ../cloud-hub-manifests.bak/be-vcenter-vm.yaml ./be-vcenter-vm.yaml
-```
-
-## Generate a Certificate Authority Certificate
-
-```bash
-cd /root/cloud-hub-manifests/
-mkdir cert
-cd cert
-echo ${envoy_fqdn}
-  # -> 値が設定されていること
-
-# 1. Generate a CA certificate private key.
-openssl genrsa -out ca.key 4096
-
-ll ca.key
-  # -> ファイルが存在することを確認
-
-# 2. Generate the CA certificate.
-openssl req -x509 -new -nodes -sha512 -days 3650 \
- -subj "/C=/ST=/L=/O=/OU=/CN=${envoy_fqdn}" \
- -key ca.key \
- -out ca.crt
+  ```bash
+  cd ~/cloud-hub-manifests/
   
-  # -> 以下のログが複数行出力されるが問題無し
-  #    "req: No value provided for subject name attribute "XXX", skipped"
+  # 上で作成した VMRC 用ユーザの Username と Password を設定
+  vmrc_username=pso-portal-vmrc@vsphere.local
+  vmrc_password=VMware1!
+  
+  # base64 encode
+  vmrc_username_enc=$(echo -n ${vmrc_username} | base64)
+  vmrc_password_enc=$(echo -n ${vmrc_password} | base64)
+  
+  echo ${vmrc_username_enc}
+  echo ${vmrc_password_enc}
+  
+  echo ${vmrc_username_enc} | base64 -d
+  echo ${vmrc_password_enc} | base64 -d
+  
+  # replace
+  sed -i -e "s/VCENTER_USER_FOR_VMRC: .*$/VCENTER_USER_FOR_VMRC: \"${vmrc_username_enc}\"/g" be-vcenter-vm.yaml
+  sed -i -e "s/VCENTER_PASSWORD_FOR_VMRC: .*$/VCENTER_PASSWORD_FOR_VMRC: \"${vmrc_password_enc}\"/g" be-vcenter-vm.yaml
+  
+  # diff
+  diff -u ../cloud-hub-manifests.bak/be-vcenter-vm.yaml ./be-vcenter-vm.yaml
+  ```
 
-ll ca.crt
-  # -> ファイルが存在することを確認
-```
+## 証明書作成・登録
 
+- 実施対象サーバ：管理クライアント **(注意)**
 
-## Generate a Server Certificate
+### Generate a Certificate Authority Certificate
 
-```bash
-# 1. Generate a private key.
-openssl genrsa -out ${envoy_fqdn}.key 4096
+- CA 証明書作成
 
-ll ${envoy_fqdn}.key
-  # -> ファイルが存在することを確認
+  ```bash
+  cd /root/cloud-hub-manifests/
+  mkdir cert
+  cd cert
+  echo ${envoy_fqdn}
+    # -> 値が設定されていること
+  
+  # 1. Generate a CA certificate private key.
+  openssl genrsa -out ca.key 4096
+  
+  ll ca.key
+    # -> ファイルが存在することを確認
+  
+  # 2. Generate the CA certificate.
+  openssl req -x509 -new -nodes -sha512 -days 3650 \
+   -subj "/C=/ST=/L=/O=/OU=/CN=${envoy_fqdn}" \
+   -key ca.key \
+   -out ca.crt
+    
+    # -> 以下のログが複数行出力されるが問題無し
+    #    "req: No value provided for subject name attribute "XXX", skipped"
+  
+  ll ca.crt
+    # -> ファイルが存在することを確認
+  ```
 
-# 2. Generate a certificate signing request (CSR).
-openssl req -sha512 -new \
-    -subj "/C=/ST=/L=/O=/OU=/CN=${envoy_fqdn}" \
-    -key ${envoy_fqdn}.key \
-    -out ${envoy_fqdn}.csr
+### Generate a Server Certificate
 
-  # -> 以下のログが複数行出力されるが問題無し
-  #    "req: No value provided for subject name attribute "XXX", skipped"
+- サーバ証明書作成
 
-ll ${envoy_fqdn}.csr
-  # -> ファイルが存在することを確認
+  ```bash
+  # 1. Generate a private key.
+  openssl genrsa -out ${envoy_fqdn}.key 4096
+  
+  ll ${envoy_fqdn}.key
+    # -> ファイルが存在することを確認
+  
+  # 2. Generate a certificate signing request (CSR).
+  openssl req -sha512 -new \
+      -subj "/C=/ST=/L=/O=/OU=/CN=${envoy_fqdn}" \
+      -key ${envoy_fqdn}.key \
+      -out ${envoy_fqdn}.csr
+  
+    # -> 以下のログが複数行出力されるが問題無し
+    #    "req: No value provided for subject name attribute "XXX", skipped"
+  
+  ll ${envoy_fqdn}.csr
+    # -> ファイルが存在することを確認
+  
+  # 3. Generate an x509 v3 extension file.
+  cat > v3.ext <<-EOF
+  authorityKeyIdentifier=keyid,issuer
+  basicConstraints=CA:FALSE
+  keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+  extendedKeyUsage = serverAuth
+  subjectAltName = @alt_names
+  
+  [alt_names]
+  DNS.1=${envoy_fqdn}
+  EOF
+  
+  cat v3.ext
+  
+  # 4. Use the v3.ext file to generate a certificate
+  openssl x509 -req -sha512 -days 3650 \
+      -extfile v3.ext \
+      -CA ca.crt -CAkey ca.key -CAcreateserial \
+      -in  ${envoy_fqdn}.csr \
+      -out ${envoy_fqdn}.crt
+  
+  ll ${envoy_fqdn}.crt
+    # -> ファイルが存在することを確認
+  
+  openssl x509 -text -noout -in ${envoy_fqdn}.crt
+  openssl x509 -text -noout -in ${envoy_fqdn}.crt | grep -e "Issuer:" -e "Subject:"
+  ```
 
-# 3. Generate an x509 v3 extension file.
-cat > v3.ext <<-EOF
-authorityKeyIdentifier=keyid,issuer
-basicConstraints=CA:FALSE
-keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = @alt_names
+  - 確認観点：v3.ext に設定した SAN が設定されていること
 
-[alt_names]
-DNS.1=${envoy_fqdn}
-EOF
+    ```text
+    <出力例>
+            Issuer: CN = vmw-portal.home.ndeguchi.com
+            Subject: CN = vmw-portal.home.ndeguchi.com
+    ```
 
-cat v3.ext
+  ```bash
+  openssl x509 -text -noout -in ${envoy_fqdn}.crt | grep -A 1 "Subject Alternative Name"
+  ```
 
-# 4. Use the v3.ext file to generate a certificate
-openssl x509 -req -sha512 -days 3650 \
-    -extfile v3.ext \
-    -CA ca.crt -CAkey ca.key -CAcreateserial \
-    -in  ${envoy_fqdn}.csr \
-    -out ${envoy_fqdn}.crt
+  - 確認観点：v3.ext に設定した SAN が設定されていること
 
-ll ${envoy_fqdn}.crt
-  # -> ファイルが存在することを確認
+    ```text
+                X509v3 Subject Alternative Name:
+                    DNS:vmw-portal.home.ndeguchi.com
+    ```
 
-openssl x509 -text -noout -in ${envoy_fqdn}.crt
-openssl x509 -text -noout -in ${envoy_fqdn}.crt | grep -e "Issuer:" -e "Subject:"
-```
+> 不要のはず
+> ## CA 証明書を Trust Anchor に登録
+> 
+> ```bash
+> # get list before update
+> trust list > trust_list_before.txt
+> ll trust_list_before.txt
+> cat trust_list_before.txt
+> 
+> # update
+> cp ca.crt /etc/pki/ca-trust/source/anchors/ca-envoy.crt
+> update-ca-trust
+> 
+> # get list after update
+> trust list > trust_list_after.txt
+> ll trust_list_after.txt
+> cat trust_list_after.txt
+> 
+> # diff
+> diff trust_list_before.txt trust_list_after.txt
+> ```
+> 
+> Envoy の CA 証明書が差分として出力されること
+> 
+> ```text
+> <出力例>
+> 6a7,12
+> > pkcs11:id=%44%5A%7F%11%89%02%DB%44%1A%5A%9D%B2%28%DA%51%EF%0B%DD%71%28;type=cert
+> >     type: certificate
+> >     label: vmw-portal.home.ndeguchi.com
+> >     trust: anchor
+> >     category: authority
+> >
+> ```
 
-v3.ext に設定した SAN が設定されていることを確認
+### Manifests ファイル修正
 
-```text
-<出力例>
-        Issuer: CN = vmw-portal.home.ndeguchi.com
-        Subject: CN = vmw-portal.home.ndeguchi.com
-```
+- 証明書の情報を Manifests に記載する
 
-```bash
-openssl x509 -text -noout -in ${envoy_fqdn}.crt | grep -A 1 "Subject Alternative Name"
-```
+  ```bash
+  cd /root/cloud-hub-manifests
+  ll cert/${envoy_fqdn}*
+  
+  cat cert/${envoy_fqdn}.crt | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
+  echo "- - - - - - - - - - - - - - - - - - - - - - - - - " >> httpproxy.yaml
+  cat cert/${envoy_fqdn}.key | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
+  
+  vim httpproxy.yaml
+  ```
 
-v3.ext に設定した SAN が設定されていることを確認
+  - 追記した証明書を以下フォーマットになるよう修正
 
-```text
-            X509v3 Subject Alternative Name:
-                DNS:vmw-portal.home.ndeguchi.com
-```
+    ```text
+    <フォーマット>
+    ---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      namespace: vmw-pso-portal
+      name: envoy-tls
+    type: kubernetes.io/tls
+    data:
+      tls.crt: |
+        (${envoy_fqdn}.crtの中身)
+      tls.key: |
+        (${envoy_fqdn}.keyの中身)
+    ```
 
-## CA 証明書を Trust Anchor に登録
-
-```bash
-# get list before update
-trust list > trust_list_before.txt
-ll trust_list_before.txt
-cat trust_list_before.txt
-
-# update
-cp ca.crt /etc/pki/ca-trust/source/anchors/ca-envoy.crt
-update-ca-trust
-
-# get list after update
-trust list > trust_list_after.txt
-ll trust_list_after.txt
-cat trust_list_after.txt
-
-# diff
-diff trust_list_before.txt trust_list_after.txt
-```
-
-Envoy の CA 証明書が差分として出力されること
-
-```text
-<出力例>
-6a7,12
-> pkcs11:id=%44%5A%7F%11%89%02%DB%44%1A%5A%9D%B2%28%DA%51%EF%0B%DD%71%28;type=cert
->     type: certificate
->     label: vmw-portal.home.ndeguchi.com
->     trust: anchor
->     category: authority
->
-```
-
-## Manifest ファイル修正 (TLS)
-
-```bash
-cd /root/cloud-hub-manifests
-ll cert/${envoy_fqdn}*
-
-cat cert/${envoy_fqdn}.crt | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
-echo "- - - - - - - - - - - - - - - - - - - - - - - - - " >> httpproxy.yaml
-cat cert/${envoy_fqdn}.key | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
-
-vim httpproxy.yaml
-```
-
-追記した証明書を以下フォーマットになるよう修正
-
-```text
-<フォーマット>
----
-apiVersion: v1
-kind: Secret
-metadata:
-  namespace: vmw-pso-portal
-  name: envoy-tls
-type: kubernetes.io/tls
-data:
-  tls.crt: |
-    (${envoy_fqdn}.crtの中身)
-  tls.key: |
-    (${envoy_fqdn}.keyの中身)
-```
-
-```bash
-# 差分確認
-diff -u ../cloud-hub-manifests.bak/httpproxy.yaml httpproxy.yaml
-
-# cat
-cat httpproxy.yaml
-```
+  ```bash
+  # 差分確認
+  diff -u ../cloud-hub-manifests.bak/httpproxy.yaml httpproxy.yaml
+  
+  # cat
+  cat httpproxy.yaml
+  ```
 
 ## デプロイ
 
 作業実施サーバ: 管理クライアント
 
-```bash
-# 適用する yaml ファイルを cat
-for yaml in $(find . -name "*.yaml"); do
-  echo "========== ${yaml} =========="
-  cat ${yaml}
-  echo ""
-done
+- PSO Portal を Kubernetes にデプロイする
 
-# namespace 作成
-k apply -f ns-vmw-pso-portal.yaml
+  ```bash
+  # 適用する yaml ファイルを cat
+  for yaml in $(find . -name "*.yaml"); do
+    echo "========== ${yaml} =========="
+    cat ${yaml}
+    echo ""
+  done
+  
+  # namespace 作成
+  k apply -f ns-vmw-pso-portal.yaml
+  
+  # PostgreSQL デプロイ
+  kubectl apply -f postgres.yaml
+  watch kubectl get pv,pvc,pod,svc -n vmw-pso-portal
+  
+  # 適用する yaml の配列作成
+  yamls=("be-history.yaml" "be-inventory.yaml" "be-notice.yaml" "be-nsx-lb.yaml" \
+         "be-portal-auth.yaml" "be-vcenter-vm.yaml" "bff.yaml" "fe.yaml" \
+         "be-console-openresty.yaml" "httpproxy.yaml")
+  
+  # 適用
+  for yaml in ${yamls[@]}; do
+    echo "----- ${yaml} -----"
+    k apply -f ${yaml}
+    echo ""
+  done
+  
+  watch kubectl get deploy,po,svc,httpproxy -n vmw-pso-portal
+  
+  # cronjob
+  kubectl apply -f cronjob.yaml
+  kubectl get cronjob -n vmw-pso-portal
+  watch kubectl get pod -n vmw-pso-portal
+  
+  kubectl get pod -n vmw-pso-portal
+  kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-history-detect-system-errors | tail -n 1) -n vmw-pso-portal
+    # -> 204 NoContent が応答されていること
+  kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep vm-refresh | tail -n 1) -n vmw-pso-portal
+    # -> 200 OK が応答されていること
+  ```
 
-# PostgreSQL デプロイ
-kubectl apply -f postgres.yaml
-watch kubectl get pv,pvc,pod,svc -n vmw-pso-portal
+- Seed データを投入する
 
-# 適用する yaml の配列作成
-yamls=("be-history.yaml" "be-inventory.yaml" "be-notice.yaml" "be-nsx-lb.yaml" \
-       "be-portal-auth.yaml" "be-vcenter-vm.yaml" "bff.yaml" "fe.yaml" \
-       "be-console-openresty.yaml" "httpproxy.yaml")
+  ```bash
+  # 投入
+  kubectl apply -f seed/be-portal-auth-seed.yaml
+  
+  # ステータス監視
+  kubectl get pod -n vmw-pso-portal -w | grep seed
+    # pod が Completed になるまで待機
+  
+  # ログ確認
+  kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-portal-auth-seed | tail -n 1) -n vmw-pso-portal
+  ```
 
-# 適用
-for yaml in ${yamls[@]}; do
-  echo "----- ${yaml} -----"
-  k apply -f ${yaml}
-  echo ""
-done
+  - 以下ログが出力されていること
 
-watch kubectl get deploy,po,svc,httpproxy -n vmw-pso-portal
+    ```text
+    Start generate seeds
+    End generate seeds
+    ```
 
-# cronjob
-kubectl apply -f cronjob.yaml
-kubectl get cronjob -n vmw-pso-portal
-watch kubectl get pod -n vmw-pso-portal
+  ```bash
+  # cronjob削除
+  kubectl delete -f seed/be-portal-auth-seed.yaml
+  ```
 
-kubectl get pod -n vmw-pso-portal
-kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-history-detect-system-errors | tail -n 1) -n vmw-pso-portal
-  # -> 204 NoContent が応答されていること
-kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep vm-refresh | tail -n 1) -n vmw-pso-portal
-  # -> 200 OK が応答されていること
-```
+## 動作確認
 
-## Seed データ投入
+### GUI ログイン
 
-作業実施サーバ: 管理クライアント
+- 作業実施サーバ: 管理クライアント
+  - 管理クライアントの Firefox から Envoy の FQDN にアクセスし ID: `system_admin`, PW: `system_admin` でログインできることを確認する。
+  - パスワードを変更する
 
-```bash
-kubectl apply -f seed/be-portal-auth-seed.yaml
-kubectl get pod -n vmw-pso-portal -w | grep seed
-  # pod が Completed になるまで待機
+### 自動復旧確認
 
-kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-portal-auth-seed | tail -n 1) -n vmw-pso-portal
-```
+- 作業実施サーバ: 管理クライアント
 
-以下ログが出力されていること
+  ```bash
+  # Podの一覧を取得
+  kubectl get pod -n vmw-pso-portal
+  
+  # PSO Portal の Pod を全て削除
+  kubectl delete pod --all -n vmw-pso-portal
+  
+  # ステータス監視
+  watch kubectl get pod -n vmw-pso-portal
+  ```
 
-```text
-Start generate seeds
-End generate seeds
-```
-
-```bash
-kubectl delete -f seed/be-portal-auth-seed.yaml
-```
-
-## GUI ログイン
-
-作業実施サーバ: 管理クライアント
-
-- 管理クライアントの Firefox から Envoy の FQDN にアクセスし ID: `system_admin`, PW: `system_admin` でログインできることを確認する。
-- パスワードを変更する
-
-## 自動復旧確認
-
-作業実施サーバ: 管理クライアント
-
-```bash
-kubectl get pod -n vmw-pso-portal
-kubectl delete pod --all -n vmw-pso-portal
-watch kubectl get pod -n vmw-pso-portal
-```
-
-Firefoxで一度ログアウトし再度ログインする。
-この時、変更したパスワードでログインできることを確認する。（DBデータの永続性確認）
+  Firefoxで一度ログアウトし再度ログインする。 \
+  この時、変更したパスワードでログインできることを確認する。（DBデータの永続性確認）
 
 
 ## fluentbit インストール
 
-- 管理クライアント **(注意)** の GUI から Firefox を開き以下作業を実施する。
-  - Harbor にログイン
-  - `NEW PROJECT` ボタンから新規プロジェクトを作成
+### Harbor プロジェクト作成
+
+- 実施対象サーバ：管理クライアント
+  1. GUI にログインし Firefox を起動
+  1. Harbor にログイン
+  1. `NEW PROJECT` ボタンをクリックし以下内容で新規プロジェクトを作成
 
     | 項目                 | 値                |
-    | :---:                | :---:             |
+    | :---                 | :---              |
     | Project Name         | fluent            |
     | Access Level         | Public にチェック |
     | Project quota limits | -1 GiB            |
@@ -666,6 +699,7 @@ Firefoxで一度ログアウトし再度ログインする。
 
     ![img](img/72_harbor_create_fluent_repository.png)
 
+### Manifest ファイル作成
 
 - 作業実施サーバ: 管理クライアント
 
@@ -677,13 +711,12 @@ Firefoxで一度ログアウトし再度ログインする。
   mv linux-amd64/helm /usr/local/bin/
   helm version
   
-  # FluentBit インストール
+  # Helm リポジトリ追加
   helm repo list
   helm repo add fluent https://fluent.github.io/helm-charts
     # -> "fluent" has been added to your repositories
   
-  
-  
+  # values.yaml 取得・修正
   helm show values fluent/fluent-bit > fluent-bit-values.yaml
   cp -p fluent-bit-values.yaml fluent-bit-values.yaml.org
   vim fluent-bit-values.yaml
@@ -752,7 +785,10 @@ Firefoxで一度ログアウトし再度ログインする。
     ```
 
   ```bash
+  # manifestファイル作成
   helm template fluent/fluent-bit -f fluent-bit-values.yaml > fluent-bit.yaml
+  
+  # コンテナイメージ確認
   grep image: fluent-bit.yaml | sed -e "s/^.*image: //g" | sed -e "s/\"//g"
   ```
 
@@ -764,11 +800,13 @@ Firefoxで一度ログアウトし再度ログインする。
     busybox:latest
     ```
 
-- 上で確認した fluent-bit が使用するイメージをインターネット疎通可能なサーバで取得する。 \
-  docker pull が可能なサーバにて実施すること。 **(注意)**
+### コンテナイメージ取得
+
+- インターネットからコンテナイメージを取得できるサーバで fluentbit のコンテナイメージを取得する。 \
+  本手順で構築している Fedora ではなくインターネットからコンテナイメージを取得出来る別サーバで実施すること。 **(注意)**
 
   ```bash
-  # 上で確認したバージョンを変数に設定する
+  # 上で確認した fluent-bit のバージョンを変数に設定する
   fluent_bit_version=2.2.0
   
   mkdir fluent-bit-images
@@ -786,29 +824,45 @@ Firefoxで一度ログアウトし再度ログインする。
   ls -l
   ```
 
-  - gzipしたイメージファイルが存在すること
+  - 確認観点：gzipしたイメージファイルが存在すること
   
     ```text
     -rw-r--r--  1 ndeguchi  staff   2155969  1  2 01:33 busybox.tar.gz
     -rw-r--r--  1 ndeguchi  staff  30070981  1  2 01:33 fluent-bit-2.2.0.tar.gz
     ```
 
-- fluent-bit で使用するコンテナイメージファイルを配置するためのディレクトリを管理クライアントで作成する
-
   ```bash
-  mkdir ~/fluent-bit-images/
+  cd ..
+  ll -d fluent-bit-images/
+    # -> ディレクトリが存在すること
+  
+  tar -zcvf fluent-bit-images.tar.gz fluent-bit-images
+  ll fluent-bit-images.tar.gz
+    # -> ファイルが存在すること
   ```
 
-- 上で圧縮したコンテナイメージの tar.gz ファイルを管理クライアントの `/root/fluent-bit-images/` に配置する。
+### コンテナイメージ転送
 
-- fluent-bit のイメージを Harbor に push する
+- 上記で作成したファイル `fluent-bit-images.tar.gz` を管理クライアントの `/root/` 直下に転送する。
+
+### コンテナイメージを Harbor に Push
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
-  cd ~/fluent-bit-images/
-  ls -l
+  cd ~/
+  ls -l fluent-bit-images.tar.gz
+    # -> ファイルが存在すること
+  
+  tar -zxvf fluent-bit-images.tar.gz
+  ls -ld fluent-bit-images
+    # -> ディレクトリが存在すること
+  
+  cd fluent-bit-images
+  ll
   ```
   
-  - 配置した tar.gz のファイルが存在すること
+  - tar.gz のファイルが存在すること
   
     ```text
     -rw-r--r--. 1 root root  2155969  1月  2 01:35 busybox.tar.gz
@@ -816,27 +870,29 @@ Firefoxで一度ログアウトし再度ログインする。
     ```
 
   ```bash
-  # 上で確認したバージョンを変数に設定する
+  # fluent-bit のバージョンを変数に設定する
   fluent_bit_version=2.2.0
 
-  # load
+  # Load
   docker load < busybox.tar.gz
-  docker load < fluent-bit-2.2.0.tar.gz
+  docker load < fluent-bit-${fluent_bit_version}.tar.gz
   
   docker images | grep -e busybox -e fluent-bit
 
-  # tag
+  # Tag
   docker tag busybox:latest                                          ${harbor_fqdn}/library/busybox:latest
   docker tag cr.fluentbit.io/fluent/fluent-bit:${fluent_bit_version} ${harbor_fqdn}/fluent/fluent-bit:${fluent_bit_version}
 
   docker images | grep -e busybox -e fluent-bit | sort
 
-  # push
+  # Push
   docker push ${harbor_fqdn}/library/busybox:latest
   docker push ${harbor_fqdn}/fluent/fluent-bit:${fluent_bit_version}
   ```
 
-- yaml ファイルを修正する
+### Manifests ファイル修正
+
+- 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
   # backup
@@ -876,19 +932,21 @@ Firefoxで一度ログアウトし再度ログインする。
            args: ['release-name-fluent-bit:2020']
     ```
 
-- fluent-bit をデプロイする
+### デプロイ
 
-```bash
-kubectl apply -f fluent-bit.yaml
-watch kubectl get pod
-```
+- 実施対象サーバ：管理クライアント **(注意)**
 
-- fluent-bit の pod が起動するまで待機する。
-
-  ```text
-  <出力例>
-  NAME                            READY   STATUS    RESTARTS   AGE
-  release-name-fluent-bit-nv9rf   1/1     Running   0          56s
-  release-name-fluent-bit-sbwpv   1/1     Running   0          56s
+  ```bash
+  kubectl apply -f fluent-bit.yaml
+  watch kubectl get pod
   ```
+  
+  - fluent-bit の pod が起動するまで待機する。
+  
+    ```text
+    <出力例>
+    NAME                            READY   STATUS    RESTARTS   AGE
+    release-name-fluent-bit-nv9rf   1/1     Running   0          56s
+    release-name-fluent-bit-sbwpv   1/1     Running   0          56s
+    ```
 
