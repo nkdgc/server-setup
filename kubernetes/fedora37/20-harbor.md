@@ -30,7 +30,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   docker compose version
   ```
 
-  - 確認観点：以下のようにバージョン情報が出力されることを確認する。
+  - 確認観点：バージョン情報が出力されること
 
     ```text
     <出力例>
@@ -43,7 +43,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   openssl version
   ```
 
-  - 確認観点：以下のようにバージョン情報が出力されることを確認する。
+  - 確認観点：バージョン情報が出力されること
 
     ```text
     <出力例>
@@ -184,7 +184,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   openssl x509 -text -noout -in ${harbor_fqdn}.crt | grep -A 1 "Subject Alternative Name"
   ```
 
-  - 確認観点：v3.ext に設定した SAN が証明書に設定されていることを確認
+  - 確認観点：v3.ext に設定した SAN が証明書に設定されていること
 
     ```text
     <出力例>
@@ -192,41 +192,42 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
         DNS:harbor2.home.ndeguchi.com, IP Address:192.168.14.40
     ```
 
-### CA 証明書を Trust Anchor に登録
-
-- Harbor の CA 証明書をサーバの Trust Anchor に登録する。
-
-  ```bash
-  # get list before update
-  cd
-  trust list > trust_list_before.txt
-  ll trust_list_before.txt
-  cat trust_list_before.txt
-  
-  # update
-  cp ca.crt /etc/pki/ca-trust/source/anchors/
-  update-ca-trust
-  
-  # get list after update
-  trust list > trust_list_after.txt
-  ll trust_list_after.txt
-  cat trust_list_after.txt
-  
-  # diff
-  diff trust_list_before.txt trust_list_after.txt
-  ```
-
-  - 確認観点：Harbor の CA 証明書が差分として出力されること
-
-    ```text
-    <出力例>
-    > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
-    >     type: certificate
-    >     label: harbor2.home.ndeguchi.com
-    >     trust: anchor
-    >     category: authority
-    >
-    ```
+> 不要なはず
+> ### CA 証明書を Trust Anchor に登録
+> 
+> - Harbor の CA 証明書をサーバの Trust Anchor に登録する。
+> 
+>   ```bash
+>   # get list before update
+>   cd
+>   trust list > trust_list_before.txt
+>   ll trust_list_before.txt
+>   cat trust_list_before.txt
+>   
+>   # update
+>   cp ca.crt /etc/pki/ca-trust/source/anchors/
+>   update-ca-trust
+>   
+>   # get list after update
+>   trust list > trust_list_after.txt
+>   ll trust_list_after.txt
+>   cat trust_list_after.txt
+>   
+>   # diff
+>   diff trust_list_before.txt trust_list_after.txt
+>   ```
+> 
+>   - 確認観点：Harbor の CA 証明書が差分として出力されること
+> 
+>     ```text
+>     <出力例>
+>     > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
+>     >     type: certificate
+>     >     label: harbor2.home.ndeguchi.com
+>     >     trust: anchor
+>     >     category: authority
+>     >
+>     ```
 
 ### Provide the Certificates to Harbor and Docker
 
@@ -253,7 +254,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ll /etc/docker/certs.d/${harbor_fqdn}/
   ```
 
-  - ca.crt, cert, key 以下3ファイルが存在することを確認
+  - 確認観点：ca.crt, cert, key の3ファイルが存在すること
 
     ```text
     <出力例>
@@ -335,7 +336,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ./prepare
   ```
 
-  - 確認観点：以下のように `Generated configuration file: /compose_location/docker-compose.yml` が出力されることを確認
+  - 確認観点： `Generated configuration file: /compose_location/docker-compose.yml` が出力されること
 
     ```text
     <出力例>
@@ -545,7 +546,8 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 ## 動作確認（管理クライアント）
 
-作業対象サーバ：管理クライアント **(注意)**
+作業対象サーバ：管理クライアント **(注意)** \
+本セクション `動作確認（管理クライアント）` は全て管理クライアントで実施すること。
 
 ### 証明書取得
 
@@ -725,15 +727,28 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
     ```text
     <出力例>
-    CONTAINER ID   IMAGE                                COMMAND                   CREATED          STATUS                        PORTS                                                                            NAMES
-    a4539b6437ec   goharbor/harbor-jobservice:v2.9.1    "/harbor/entrypoint.…"   18 minutes ago   Up 56 seconds (healthy)                                                                                        harbor-jobservice
-    0e3f59a0efe2   goharbor/nginx-photon:v2.9.1         "nginx -g 'daemon of…"   18 minutes ago   Up About a minute (healthy)   0.0.0.0:80->8080/tcp, :::80->8080/tcp, 0.0.0.0:443->8443/tcp, :::443->8443/tcp   nginx
-    d0f2f33e445a   goharbor/harbor-core:v2.9.1          "/harbor/entrypoint.…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-core
-    d4b58b1f8f77   goharbor/redis-photon:v2.9.1         "redis-server /etc/r…"   18 minutes ago   Up About a minute (healthy)                                                                                    redis
-    2f8051939aea   goharbor/registry-photon:v2.9.1      "/home/harbor/entryp…"   18 minutes ago   Up About a minute (healthy)                                                                                    registry
-    5926aa4ee847   goharbor/harbor-db:v2.9.1            "/docker-entrypoint.…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-db
-    a36086a6d834   goharbor/harbor-registryctl:v2.9.1   "/home/harbor/start.…"   18 minutes ago   Up About a minute (healthy)                                                                                    registryctl
-    5654ef2e9293   goharbor/harbor-portal:v2.9.1        "nginx -g 'daemon of…"   18 minutes ago   Up About a minute (healthy)                                                                                    harbor-portal
-    b43ff5244909   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   18 minutes ago   Up About a minute (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
+    CONTAINER ID   IMAGE                                COMMAND                   CREATED          STATUS                    PORTS                                                                            NAMES
+    902acace1765   goharbor/harbor-jobservice:v2.9.1    "/harbor/entrypoint.…"   20 minutes ago   Up 42 seconds (healthy)                                                                                    harbor-jobservice
+    a1bdf53282c5   goharbor/nginx-photon:v2.9.1         "nginx -g 'daemon of…"   20 minutes ago   Up 47 seconds (healthy)   0.0.0.0:80->8080/tcp, :::80->8080/tcp, 0.0.0.0:443->8443/tcp, :::443->8443/tcp   nginx
+    51f7a34b9921   goharbor/harbor-core:v2.9.1          "/harbor/entrypoint.…"   20 minutes ago   Up 49 seconds (healthy)                                                                                    harbor-core
+    de807f2e3b6a   goharbor/harbor-registryctl:v2.9.1   "/home/harbor/start.…"   20 minutes ago   Up 48 seconds (healthy)                                                                                    registryctl
+    7d6a6e2a6144   goharbor/harbor-db:v2.9.1            "/docker-entrypoint.…"   20 minutes ago   Up 48 seconds (healthy)                                                                                    harbor-db
+    3e1cc71a6116   goharbor/registry-photon:v2.9.1      "/home/harbor/entryp…"   20 minutes ago   Up 48 seconds (healthy)                                                                                    registry
+    ecac0b6a4fd1   goharbor/harbor-portal:v2.9.1        "nginx -g 'daemon of…"   20 minutes ago   Up 48 seconds (healthy)                                                                                    harbor-portal
+    01f7e582b770   goharbor/redis-photon:v2.9.1         "redis-server /etc/r…"   20 minutes ago   Up 49 seconds (healthy)                                                                                    redis
+    e934614226f8   goharbor/harbor-log:v2.9.1           "/bin/sh -c /usr/loc…"   20 minutes ago   Up 49 seconds (healthy)   127.0.0.1:1514->10514/tcp                                                        harbor-log
     ```
+
+## GC/LogRotate 設定
+
+- GUI から Harbor の GarbageCollection と LogRotate を設定する。
+  - GarbageCollection
+    - `Administration` -> `Clean Up` -> `Garbage Collection`
+    - `Schedule to GC` を設定
+    - ![img](img/73_harbor_cleanup_gc.png)
+
+  - Log Rotation
+    - `Administration` -> `Clean Up` -> `Log Rotation`
+    - `Schedule to purge` と `Keep records in` を設定
+    - ![img](img/74_harbor_cleanup_logrotation.png)
 

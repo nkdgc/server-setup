@@ -24,7 +24,7 @@
   df -h | grep fedora-root
     # -> <出力例>
     #    /dev/mapper/fedora-root    15G  1.6G   14G   11% /
-    # 15 GB しか割り当てられていないことが分かる
+    # 15 GB しか割り当てられていないことが確認できる
   
   lvextend -An --extents +100%FREE /dev/mapper/fedora-root
     # -> <出力例>
@@ -38,7 +38,7 @@
   df -h | grep fedora-root
     # -> <出力例>
     #    /dev/mapper/fedora-root    79G  2.1G   77G    3% /
-    # 79 GB まで拡張できた
+    # 79 GB まで拡張された
   ```
 
 ## dnfリポジトリキャッシュ更新無効化
@@ -178,6 +178,7 @@
 ## dnf(yum) のリポジトリ指定
 
 - Proxy Server の宛先許可リストを固定するため、dnf のリポジトリ参照先を mirror リストから `riken.jp` に変更する。Proxy Server の宛先許可リストを固定する必要が無いのであれば実施不要。
+
   ```bash
   cd /etc/
   
@@ -214,6 +215,7 @@
 ## package update
 
 - パッケージを更新
+
   ```
   dnf update -y
   ```
