@@ -945,7 +945,7 @@
 - 実施対象サーバ：管理クライアント **(注意)**
   1. GUI にログインし Firefox を起動
   1. Harbor にログイン
-  1. `NEW PROJECT` ボタンから `calico` と `tigera` の新規プロジェクトを2つ作成
+  1. `NEW PROJECT` ボタンから `calico` と `tigera` の2つの新規プロジェクトを作成
 
      | 項目                 | 値                |
      | :---                 | :---              |
@@ -1001,17 +1001,10 @@
   docker save calico/node-driver-registrar:v3.26.3  > calico_node-driver-registrar_v3.26.3.tar
 
   # Gzip
-  gzip quay.io_tigera_operator_v1.30.7.tar
-  gzip calico_typha_v3.26.3.tar
-  gzip calico_ctl_v3.26.3.tar
-  gzip calico_node_v3.26.3.tar
-  gzip calico_cni_v3.26.3.tar
-  gzip calico_apiserver_v3.26.3.tar
-  gzip calico_kube-controllers_v3.26.3.tar
-  gzip calico_dikastes_v3.26.3.tar
-  gzip calico_pod2daemon-flexvol_v3.26.3.tar
-  gzip calico_csi_v3.26.3.tar
-  gzip calico_node-driver-registrar_v3.26.3.tar
+  for f in $(ls *.tar); do
+    echo "===== ${f} ====="
+    gzip ${f}
+  done
   
   # List
   ls -l
@@ -1036,11 +1029,8 @@
   ```bash
   cd ../../
   ls -ld calico/
-  ```
-
-  - ディレクトリ `calico` が存在すること
-
-  ```bash
+    # -> ディレクトリが存在すること
+  
   tar -zcvf calico.tar.gz calico
   ls -l calico.tar.gz
     # -> ファイルが存在すること
@@ -1157,14 +1147,19 @@
 - 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
-  cd ~/calico
-  mkdir manifest
-  cd manifest
+  mkdir ~/calico/manifest
+  cd ~/calico/manifest
   
-  # tigera-operator の コンテナイメージを quay.io から harbor に変更
+  # manifest ファイル取得
   curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/tigera-operator.yaml
+  
+  # backup
   cp -p tigera-operator.yaml tigera-operator.yaml.org
+  
+  # tigera-operator の取得元を quay.io から harbor に変更
   sed -i -e "s?quay.io?${harbor_fqdn}?g" tigera-operator.yaml
+  
+  # 差分確認
   diff -u tigera-operator.yaml.org tigera-operator.yaml
   ```
 
@@ -1221,12 +1216,18 @@
     ```
 
   ```bash
+  # manifest (custom-resources) 取得
   curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/custom-resources.yaml
+  
+  # Backup
   cp -p custom-resources.yaml custom-resources.yaml.bak
+  
+  # 修正
   vim custom-resources.yaml
     # 以下 diff 結果の通り修正する
     # spec.registry の値は Harbor の FQDN を指定すること
 
+  # 差分確認
   diff -u custom-resources.yaml.bak custom-resources.yaml
   ```
 

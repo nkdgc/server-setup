@@ -126,7 +126,9 @@
     # -> ファイルが存在すること
   
   tar -zxvf common-images.tar.gz
-  ls -lR common-images
+  ls -ld common-images
+    # -> ディレクトリが存在すること
+  
   cd common-images
   ls -l
   ```
@@ -297,40 +299,41 @@
 
   ```bash
   cd ~/
-  ls -lR cloud-hub-manifests/
+  ll -R vmw-pso-portal-manifests/
   ```
 
   - manifests ファイルが存在すること
 
     ```text
     <出力例>
-    cloud-hub-manifests/:
+    vmw-pso-portal-manifests/:
     合計 60
-    -rw-r--r--. 1 502 games 2155 12月 24 18:32 be-console-openresty.yaml
-    -rw-r--r--. 1 502 games 1757 12月 24 18:32 be-history.yaml
-    -rw-r--r--. 1 502 games 2074 12月 24 18:32 be-inventory.yaml
-    -rw-r--r--. 1 502 games 1760 12月 24 18:32 be-notice.yaml
-    -rw-r--r--. 1 502 games 1665 12月 24 18:32 be-nsx-lb.yaml
-    -rw-r--r--. 1 502 games 2057 12月 24 18:32 be-portal-auth.yaml
-    -rw-r--r--. 1 502 games 2455 12月 24 18:32 be-vcenter-vm.yaml
-    -rw-r--r--. 1 502 games 1786 12月 24 18:32 bff.yaml
-    -rw-r--r--. 1 502 games 1175 12月 24 18:32 cronjob.yaml
-    -rw-r--r--. 1 502 games 1291 12月 24 18:32 fe.yaml
-    -rw-r--r--. 1 502 games 8207 12月 24 18:32 httpproxy.yaml
-    -rw-r--r--. 1 502 games   64 12月 24 16:40 ns-vmw-pso-portal.yaml
-    -rw-r--r--. 1 502 games 1764 12月 24 18:32 postgres.yaml
-    drwxr-xr-x. 2 502 games   38  1月  2 00:10 seed
+    -rw-r--r--. 1 502 wheel 2155  1月  5 01:38 be-console-openresty.yaml
+    -rw-r--r--. 1 502 wheel 1757  1月  5 01:38 be-history.yaml
+    -rw-r--r--. 1 502 wheel 2074  1月  5 01:38 be-inventory.yaml
+    -rw-r--r--. 1 502 wheel 1760  1月  5 01:38 be-notice.yaml
+    -rw-r--r--. 1 502 wheel 1665  1月  5 01:38 be-nsx-lb.yaml
+    -rw-r--r--. 1 502 wheel 1972  1月  5 01:38 be-portal-auth.yaml
+    -rw-r--r--. 1 502 wheel 2455  1月  5 01:38 be-vcenter-vm.yaml
+    -rw-r--r--. 1 502 wheel 1786  1月  5 01:38 bff.yaml
+    -rw-r--r--. 1 502 wheel 1175  1月  5 01:38 cronjob.yaml
+    -rw-r--r--. 1 502 wheel 1291  1月  5 01:38 fe.yaml
+    -rw-r--r--. 1 502 wheel 8207  1月  5 01:38 httpproxy.yaml
+    -rw-r--r--. 1 502 wheel   64  1月  5 01:38 ns-vmw-pso-portal.yaml
+    -rw-r--r--. 1 502 wheel 1764  1月  5 01:38 postgres.yaml
+    drwxr-xr-x. 2 502 wheel   38  1月  5 01:40 seed
     
-    cloud-hub-manifests/seed:
+    vmw-pso-portal-manifests/seed:
     合計 4
-    -rw-r--r--. 1 502 games 468 12月 24 18:32 be-portal-auth-seed.yaml
+    -rw-r--r--. 1 502 wheel 468  1月  5 01:38 be-portal-auth-seed.yaml
     ```
 
   ```bash
   # Backup
-  cp -pr cloud-hub-manifests cloud-hub-manifests.bak
-  ll -d cloud-hub-manifests.bak
-  cd cloud-hub-manifests
+  cp -pr vmw-pso-portal-manifests vmw-pso-portal-manifests.bak
+  ll -d vmw-pso-portal-manifests.bak
+    # -> ディレクトリが存在すること
+  cd vmw-pso-portal-manifests
   
   # Harbor の FQDN 変更
   echo ${harbor_fqdn}
@@ -351,14 +354,14 @@
   done
   
   # diff
-  diff -ru ../cloud-hub-manifests.bak .
+  diff -ru ../vmw-pso-portal-manifests.bak .
   ```
 
 ## VMRC 用ユーザ作成・設定
 
 ### vCenter でユーザ作成
 
-- vCenter サーバで VMRC 接続用ユーザを作成する
+- vCenter サーバで VMRC 接続用ユーザを作成し権限を付与する
 
   - ユーザ作成
     - ![img](img/50_vmrc_add_user.png)
@@ -377,7 +380,7 @@
 - 実施対象サーバ：管理クライアント **(注意)**
 
   ```bash
-  cd ~/cloud-hub-manifests/
+  cd ~/vmw-pso-portal-manifests
   
   # 上で作成した VMRC 用ユーザの Username と Password を設定
   vmrc_username=pso-portal-vmrc@vsphere.local
@@ -391,14 +394,17 @@
   echo ${vmrc_password_enc}
   
   echo ${vmrc_username_enc} | base64 -d
+    # -> 設定した文字列に正しく復号化できることを確認
+
   echo ${vmrc_password_enc} | base64 -d
+    # -> 設定した文字列に正しく復号化できることを確認
   
   # replace
   sed -i -e "s/VCENTER_USER_FOR_VMRC: .*$/VCENTER_USER_FOR_VMRC: \"${vmrc_username_enc}\"/g" be-vcenter-vm.yaml
   sed -i -e "s/VCENTER_PASSWORD_FOR_VMRC: .*$/VCENTER_PASSWORD_FOR_VMRC: \"${vmrc_password_enc}\"/g" be-vcenter-vm.yaml
   
   # diff
-  diff -u ../cloud-hub-manifests.bak/be-vcenter-vm.yaml ./be-vcenter-vm.yaml
+  diff -u ../vmw-pso-portal-manifests.bak/be-vcenter-vm.yaml ./be-vcenter-vm.yaml
   ```
 
 ## 証明書作成・登録
@@ -410,7 +416,7 @@
 - CA 証明書作成
 
   ```bash
-  cd /root/cloud-hub-manifests/
+  cd /root/vmw-pso-portal-manifests/
   mkdir cert
   cd cert
   echo ${envoy_fqdn}
@@ -505,49 +511,62 @@
                     DNS:vmw-portal.home.ndeguchi.com
     ```
 
-> 不要のはず
-> ## CA 証明書を Trust Anchor に登録
-> 
-> ```bash
-> # get list before update
-> trust list > trust_list_before.txt
-> ll trust_list_before.txt
-> cat trust_list_before.txt
-> 
-> # update
-> cp ca.crt /etc/pki/ca-trust/source/anchors/ca-envoy.crt
-> update-ca-trust
-> 
-> # get list after update
-> trust list > trust_list_after.txt
-> ll trust_list_after.txt
-> cat trust_list_after.txt
-> 
-> # diff
-> diff trust_list_before.txt trust_list_after.txt
-> ```
-> 
-> Envoy の CA 証明書が差分として出力されること
-> 
-> ```text
-> <出力例>
-> 6a7,12
-> > pkcs11:id=%44%5A%7F%11%89%02%DB%44%1A%5A%9D%B2%28%DA%51%EF%0B%DD%71%28;type=cert
-> >     type: certificate
-> >     label: vmw-portal.home.ndeguchi.com
-> >     trust: anchor
-> >     category: authority
-> >
-> ```
+### CA 証明書を Trust Anchor に登録
+
+- 上で作成した CA 証明書を管理クライアントの Trust Anchor に登録する
+
+  ```bash
+  # get list before update
+  cd
+  trust list > trust_list_before.txt
+  ll trust_list_before.txt
+  cat trust_list_before.txt
+  
+  # update
+  cp vmw-pso-portal-manifests/cert/ca.crt /etc/pki/ca-trust/source/anchors/ca-envoy.crt
+  update-ca-trust
+  
+  # get list after update
+  trust list > trust_list_after.txt
+  ll trust_list_after.txt
+  cat trust_list_after.txt
+  
+  # diff
+  diff trust_list_before.txt trust_list_after.txt
+  ```
+
+  - 確認観点：Envoy の CA 証明書が差分として出力されること
+
+    ```text
+    <出力例>
+    6a7,12
+    > pkcs11:id=%44%5A%7F%11%89%02%DB%44%1A%5A%9D%B2%28%DA%51%EF%0B%DD%71%28;type=cert
+    >     type: certificate
+    >     label: vmw-portal.home.ndeguchi.com
+    >     trust: anchor
+    >     category: authority
+    >
+    ```
+
+  ```bash
+  # 管理クライアント再起動
+  shutdown -r now
+  ```
 
 ### Manifests ファイル修正
 
 - 証明書の情報を Manifests に記載する
 
   ```bash
-  cd /root/cloud-hub-manifests
-  ll cert/${envoy_fqdn}*
+  cd /root/vmw-pso-portal-manifests
+
+  ll cert/${envoy_fqdn}.crt
+    # -> ファイルが存在すること
+
+  ll cert/${envoy_fqdn}.key
+    # -> ファイルが存在すること
   
+  # 証明書・秘密鍵を httpproxy.yaml に追記
   cat cert/${envoy_fqdn}.crt | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
   echo "- - - - - - - - - - - - - - - - - - - - - - - - - " >> httpproxy.yaml
   cat cert/${envoy_fqdn}.key | base64 | sed -e "s/^/    /g" >> httpproxy.yaml
@@ -555,7 +574,8 @@
   vim httpproxy.yaml
   ```
 
-  - 追記した証明書を以下フォーマットになるよう修正
+  - 追記した証明書を以下フォーマットになるよう修正。 \
+    もともと tls.crt tls.key の値として記載されている値は消去する。
 
     ```text
     <フォーマット>
@@ -575,7 +595,7 @@
 
   ```bash
   # 差分確認
-  diff -u ../cloud-hub-manifests.bak/httpproxy.yaml httpproxy.yaml
+  diff -u ../vmw-pso-portal-manifests.bak/httpproxy.yaml httpproxy.yaml
   
   # cat
   cat httpproxy.yaml
@@ -615,18 +635,137 @@
   done
   
   watch kubectl get deploy,po,svc,httpproxy -n vmw-pso-portal
+  ```
+
+  - 確認観点：全てのPodが `1/1` `Running` になるまで待機する
+
+    ```text
+    NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/be-history          2/2     2            2           3m59s
+    deployment.apps/be-inventory        2/2     2            2           3m58s
+    deployment.apps/be-notice           2/2     2            2           3m58s
+    deployment.apps/be-nsx-lb           2/2     2            2           3m56s
+    deployment.apps/be-portal-auth      2/2     2            2           3m53s
+    deployment.apps/be-vcenter-vm       2/2     2            2           3m50s
+    deployment.apps/bff                 2/2     2            2           3m47s
+    deployment.apps/console-openresty   2/2     2            2           3m45s
+    deployment.apps/fe                  2/2     2            2           3m46s
+    deployment.apps/postgres            1/1     1            1           4m25s
+    
+    NAME                                     READY   STATUS    RESTARTS        AGE
+    pod/be-history-66f59f5d8c-6rtfs          1/1     Running   1 (2m59s ago)   3m59s
+    pod/be-history-66f59f5d8c-rvb55          1/1     Running   0               3m59s
+    pod/be-inventory-5858548479-9j5hv        1/1     Running   1 (119s ago)    3m58s
+    pod/be-inventory-5858548479-sx8b2        1/1     Running   0               3m58s
+    pod/be-notice-796f985459-6lbwh           1/1     Running   0               3m58s
+    pod/be-notice-796f985459-vdwzw           1/1     Running   1 (98s ago)     3m58s
+    pod/be-nsx-lb-89c7f698f-g25vk            1/1     Running   0               3m56s
+    pod/be-nsx-lb-89c7f698f-rzfcd            1/1     Running   0               3m56s
+    pod/be-portal-auth-7844bdf6d4-rvqxc      1/1     Running   1 (66s ago)     3m53s
+    pod/be-portal-auth-7844bdf6d4-sbwrn      1/1     Running   0               3m53s
+    pod/be-vcenter-vm-64d7ff777b-2xdk8       1/1     Running   0               3m50s
+    pod/be-vcenter-vm-64d7ff777b-clr9k       1/1     Running   1 (54s ago)     3m49s
+    pod/bff-d68c96975-kzh54                  1/1     Running   0               3m46s
+    pod/bff-d68c96975-mvvgj                  1/1     Running   0               3m47s
+    pod/console-openresty-786ff8cb55-2fhp2   1/1     Running   0               3m45s
+    pod/console-openresty-786ff8cb55-6tpp8   1/1     Running   0               3m45s
+    pod/fe-f9dd9465f-ckbpl                   1/1     Running   0               3m46s
+    pod/fe-f9dd9465f-v8k7b                   1/1     Running   0               3m46s
+    pod/postgres-69d9b696b6-bkfpr            1/1     Running   0               4m25s
+    
+    NAME                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+    service/be-console-openresty   ClusterIP   10.102.3.121     <none>        80/TCP     3m45s
+    service/be-history             ClusterIP   10.96.44.15      <none>        8080/TCP   3m59s
+    service/be-inventory           ClusterIP   10.98.75.84      <none>        8080/TCP   3m58s
+    service/be-notice              ClusterIP   10.107.234.169   <none>        8080/TCP   3m58s
+    service/be-nsx-lb              ClusterIP   10.106.185.22    <none>        8080/TCP   3m56s
+    service/be-portal-auth         ClusterIP   10.97.23.16      <none>        8080/TCP   3m53s
+    service/be-vcenter-vm          ClusterIP   10.108.78.179    <none>        8080/TCP   3m49s
+    service/bff                    ClusterIP   10.106.91.4      <none>        8080/TCP   3m47s
+    service/fe                     ClusterIP   10.99.79.220     <none>        80/TCP     3m46s
+    service/postgres               ClusterIP   10.110.136.168   <none>        5432/TCP   4m25s
+    
+    NAME                                         FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
+    httpproxy.projectcontour.io/vmw-pso-portal   vmw-portal.home.ndeguchi.com   envoy-tls    valid    Valid HTTPProxy
+    ```
+
   
+  ```bash
   # cronjob
   kubectl apply -f cronjob.yaml
   kubectl get cronjob -n vmw-pso-portal
-  watch kubectl get pod -n vmw-pso-portal
-  
+  watch "kubectl get pod -n vmw-pso-portal | grep -e be-history-detect-system-errors -e vm-refresh"
+  ```
+
+  - 確認観点： `be-history-detect-system-errors-xxx` と `vm-refresh-xxx` の Pod が作成され `Completed` になるまで待機。（Podは1分毎に作成される）
+
+    ```text
+    <出力例>
+    be-history-detect-system-errors-28406459-j2rzq   0/1     Completed   0               44s
+    vm-refresh-28406459-cf49h                        0/1     Completed   0               44s
+    ```
+
+  ```bash
   kubectl get pod -n vmw-pso-portal
   kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-history-detect-system-errors | tail -n 1) -n vmw-pso-portal
-    # -> 204 NoContent が応答されていること
+  ```
+
+  - 確認観点：204 NoContent が応答されていること
+
+    ```text
+    <出力例>
+      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                     Dload  Upload   Total   Spent    Left  Speed
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host be-history.vmw-pso-portal.svc.cluster.local:8080 was resolved.
+    * IPv6: (none)
+    * IPv4: 10.96.44.15
+    *   Trying 10.96.44.15:8080...
+    * Connected to be-history.vmw-pso-portal.svc.cluster.local (10.96.44.15) port 8080
+    > POST /api/v1/histories/detect/system_errors HTTP/1.1
+    > Host: be-history.vmw-pso-portal.svc.cluster.local:8080
+    > User-Agent: curl/8.5.0
+    > Accept: */*
+    >
+    < HTTP/1.1 204 No Content
+    < date: Thu, 04 Jan 2024 17:01:00 GMT
+    < server: uvicorn
+    < content-type: application/json
+    <
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+    * Connection #0 to host be-history.vmw-pso-portal.svc.cluster.local left intact
+    ```
+
+  ```bash
   kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep vm-refresh | tail -n 1) -n vmw-pso-portal
     # -> 200 OK が応答されていること
   ```
+
+  - 確認観点：200 OK が応答されていること
+
+    ```text
+    <出力例>
+      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                     Dload  Upload   Total   Spent    Left  Speed
+      0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host be-vcenter-vm.vmw-pso-portal.svc.cluster.local:8080 was resolved.
+    * IPv6: (none)
+    * IPv4: 10.108.78.179
+    *   Trying 10.108.78.179:8080...
+    * Connected to be-vcenter-vm.vmw-pso-portal.svc.cluster.local (10.108.78.179) port 8080
+    > POST /api/v1/vms/refresh HTTP/1.1
+    > Host: be-vcenter-vm.vmw-pso-portal.svc.cluster.local:8080
+    > User-Agent: curl/8.5.0
+    > Accept: */*
+    >
+    < HTTP/1.1 200 OK
+    < date: Thu, 04 Jan 2024 17:01:00 GMT
+    < server: uvicorn
+    < content-length: 4
+    < content-type: application/json
+    <
+    { [4 bytes data]
+    100     4  100     4    0     0     65      0 --:--:-- --:--:-- --:--:--    66
+    * Connection #0 to host be-vcenter-vm.vmw-pso-portal.svc.cluster.local left intact
+    ```
 
 - Seed データを投入する
 
