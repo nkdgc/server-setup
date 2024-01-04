@@ -648,7 +648,7 @@
   }
   
   # Load
-  for f in $(ls); do
+  for f in $(ls *.tar.gz); do
     echo "===== ${f} ====="
     docker load < ${f} || error_msg "failed to load image ${f}"
     echo ""
@@ -716,6 +716,7 @@
   - pause コンテナのバージョンをメモする。以下例では `3.9`
 
     ```text
+    <出力例>
     registry.k8s.io/pause:3.9
     ```
 
