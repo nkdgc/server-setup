@@ -788,6 +788,7 @@
   ```bash
   kubeadm init --control-plane-endpoint "${k8s_vip_hn}:8443" \
     --upload-certs --pod-network-cidr 10.20.0.0/16 \
+    --kubernetes-version 1.28.5 \
     --image-repository=${harbor_fqdn}/kubernetes \
     --cri-socket=unix:///var/run/cri-dockerd.sock --v 9
   ```
@@ -1114,32 +1115,24 @@
     ```
 
   ```bash
-  # Tag
-  docker tag quay.io/tigera/operator:v1.30.7       ${harbor_fqdn}/tigera/operator:v1.30.7
-  docker tag calico/typha:v3.26.3                  ${harbor_fqdn}/calico/typha:v3.26.3
-  docker tag calico/ctl:v3.26.3                    ${harbor_fqdn}/calico/ctl:v3.26.3
-  docker tag calico/node:v3.26.3                   ${harbor_fqdn}/calico/node:v3.26.3
-  docker tag calico/cni:v3.26.3                    ${harbor_fqdn}/calico/cni:v3.26.3
-  docker tag calico/apiserver:v3.26.3              ${harbor_fqdn}/calico/apiserver:v3.26.3
-  docker tag calico/kube-controllers:v3.26.3       ${harbor_fqdn}/calico/kube-controllers:v3.26.3
-  docker tag calico/dikastes:v3.26.3               ${harbor_fqdn}/calico/dikastes:v3.26.3
-  docker tag calico/pod2daemon-flexvol:v3.26.3     ${harbor_fqdn}/calico/pod2daemon-flexvol:v3.26.3
-  docker tag calico/csi:v3.26.3                    ${harbor_fqdn}/calico/csi:v3.26.3
-  docker tag calico/node-driver-registrar:v3.26.3  ${harbor_fqdn}/calico/node-driver-registrar:v3.26.3
+  # Tag (tigera)
+  docker tag quay.io/tigera/operator:v1.30.7 ${harbor_fqdn}/tigera/operator:v1.30.7
+
+  # Tag (calico)
+  for image in $(docker images | grep calico | grep -v ${harbor_fqdn} | awk '{ print $1":"$2 }'); do
+    echo "docker tag ${image} ${harbor_fqdn}/${image}"
+    docker tag ${image} ${harbor_fqdn}/${image} || \
+      error_msg "failed to tag ${harbor_fqdn}/${image}"
+  done
+
+  docker images | grep -e calico -e tigera | grep ${harbor_fqdn}
   
-  docker images | grep -e calico -e tigera | sort
-  
-  docker push ${harbor_fqdn}/tigera/operator:v1.30.7
-  docker push ${harbor_fqdn}/calico/typha:v3.26.3
-  docker push ${harbor_fqdn}/calico/ctl:v3.26.3
-  docker push ${harbor_fqdn}/calico/node:v3.26.3
-  docker push ${harbor_fqdn}/calico/cni:v3.26.3
-  docker push ${harbor_fqdn}/calico/apiserver:v3.26.3
-  docker push ${harbor_fqdn}/calico/kube-controllers:v3.26.3
-  docker push ${harbor_fqdn}/calico/dikastes:v3.26.3
-  docker push ${harbor_fqdn}/calico/pod2daemon-flexvol:v3.26.3
-  docker push ${harbor_fqdn}/calico/csi:v3.26.3
-  docker push ${harbor_fqdn}/calico/node-driver-registrar:v3.26.3
+  # Push
+  for image in $(docker images | grep -e calico -e tigera | grep ${harbor_fqdn} | awk '{ print $1":"$2 }'); do
+    echo "===== ${image} ====="
+    docker push ${image} || errmr_msg "failed to push ${image}"
+    echo ""
+  done
   ```
 
 ### Manifest 作成
@@ -1290,7 +1283,7 @@
   kubectl get node
   ```
 
-  - node の Status が READY であることを確認する
+  - 確認観点：node の Status が READY であることを確認する
 
     ```text
     <出力例>
