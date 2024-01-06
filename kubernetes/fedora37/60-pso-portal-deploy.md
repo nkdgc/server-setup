@@ -168,8 +168,18 @@
   docker tag openresty/openresty:latest ${harbor_fqdn}/library/openresty:latest
   docker tag postgres:13.10             ${harbor_fqdn}/library/postgres:13.10
 
-  docker images | grep -e curl -e openresty -e postgres | sort
-  
+  docker images | grep -e curl -e openresty -e postgres | grep ${harbor_fqdn}
+  ```
+
+  - 確認観点：Tag 付けしたコンテナイメージが存在すること
+
+    ```text
+    harbor2.home.ndeguchi.com/library/curl        latest   94fbf6205e5f   4 weeks ago    16.8MB
+    harbor2.home.ndeguchi.com/library/openresty   latest   14a754b99891   6 weeks ago    93.2MB
+    harbor2.home.ndeguchi.com/library/postgres    13.10    c562f2f06bc5   8 months ago   374MB
+    ```
+
+  ```bash
   # Push
   docker push ${harbor_fqdn}/library/curl:latest
   docker push ${harbor_fqdn}/library/openresty:latest
@@ -258,7 +268,25 @@
     echo ""
   done
   
-  # tag
+  docker images | grep vmw-pso-portal
+  ```
+
+  - 確認観点：PSO Portal のコンテナイメージが存在すること
+
+    ```text
+    nkdgc/vmw-pso-portal-fe                    latest   3b5cd59d163a   12 days ago    45.3MB
+    nkdgc/vmw-pso-portal-bff                   latest   f280738dd67d   44 years ago   460MB
+    nkdgc/vmw-pso-portal-be-inventory          latest   4f74a305834e   44 years ago   493MB
+    nkdgc/vmw-pso-portal-be-portal_auth        latest   9a78a9c6a0ac   44 years ago   505MB
+    nkdgc/vmw-pso-portal-be-portal_auth_seed   latest   edc0b24d2798   44 years ago   505MB
+    nkdgc/vmw-pso-portal-be-vcenter_vm         latest   e42abbe6ef67   44 years ago   418MB
+    nkdgc/vmw-pso-portal-be-history            latest   d777bf9ac114   44 years ago   489MB
+    nkdgc/vmw-pso-portal-be-notice             latest   e12be4163bf4   44 years ago   481MB
+    nkdgc/vmw-pso-portal-be-nsx_lb             latest   925d7b52e30e   44 years ago   480MB
+    ```
+  
+  ```bash
+  # Tag
   for label in ${images[@]}; do
     echo "===== ${label} ====="
     src_image=$(docker images | grep "${label} " | awk '{ print $1":"$2 }')
@@ -270,6 +298,24 @@
     echo ""
   done
   
+  docker images | grep vmw-pso-portal | grep ${harbor_fqdn}
+  ```
+
+  - 確認観点：Tag を付与したコンテナイメージが存在すること
+
+    ```text
+    harbor2.home.ndeguchi.com/vmw-pso-portal/fe                    latest     3b5cd59d163a   12 days ago     45.3MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/bff                   latest     f280738dd67d   44 years ago    460MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-vcenter_vm         latest     e42abbe6ef67   44 years ago    418MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-inventory          latest     4f74a305834e   44 years ago    493MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-portal_auth_seed   latest     edc0b24d2798   44 years ago    505MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-notice             latest     e12be4163bf4   44 years ago    481MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-history            latest     d777bf9ac114   44 years ago    489MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-nsx_lb             latest     925d7b52e30e   44 years ago    480MB
+    harbor2.home.ndeguchi.com/vmw-pso-portal/be-portal_auth        latest     9a78a9c6a0ac   44 years ago    505MB
+    ```
+
+  ```bash
   # push
   for image in $(docker images | grep ${harbor_fqdn}/vmw-pso-portal  | awk '{ print $1":"$2 }'); do
     echo "===== ${image} ====="
@@ -394,10 +440,10 @@
   echo ${vmrc_password_enc}
   
   echo ${vmrc_username_enc} | base64 -d
-    # -> 設定した文字列に正しく復号化できることを確認
+    # -> 正しく復号化できることを確認
 
   echo ${vmrc_password_enc} | base64 -d
-    # -> 設定した文字列に正しく復号化できることを確認
+    # -> 正しく復号化できることを確認
   
   # replace
   sed -i -e "s/VCENTER_USER_FOR_VMRC: .*$/VCENTER_USER_FOR_VMRC: \"${vmrc_username_enc}\"/g" be-vcenter-vm.yaml
@@ -409,7 +455,7 @@
 
 ## 証明書作成・登録
 
-- 実施対象サーバ：管理クライアント **(注意)**
+実施対象サーバ：管理クライアント **(注意)**
 
 ### Generate a Certificate Authority Certificate
 
@@ -616,12 +662,31 @@
   done
   
   # namespace 作成
-  k apply -f ns-vmw-pso-portal.yaml
+  kubectl apply -f ns-vmw-pso-portal.yaml
   
   # PostgreSQL デプロイ
   kubectl apply -f postgres.yaml
   watch kubectl get pv,pvc,pod,svc -n vmw-pso-portal
-  
+  ```
+
+  - persistentvolume と persistentvolumeclaim が `Bound` であり、 pod が `Running` になるまで待機
+
+    ```text
+    <出力例>
+    NAME                            CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                          STORAGECLASS   REASON   AGE
+    persistentvolume/nfs-postgres   5Gi        RWX            Retain           Bound    vmw-pso-portal/postgres-data   nfs                     113s
+    
+    NAME                                  STATUS   VOLUME         CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+    persistentvolumeclaim/postgres-data   Bound    nfs-postgres   5Gi        RWX            nfs            113s
+    
+    NAME                            READY   STATUS    RESTARTS   AGE
+    pod/postgres-69d9b696b6-b7qj8   1/1     Running   0          113s
+    
+    NAME               TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+    service/postgres   ClusterIP   10.108.109.203   <none>        5432/TCP   113s
+    ```
+
+  ```bash  
   # 適用する yaml の配列作成
   yamls=("be-history.yaml" "be-inventory.yaml" "be-notice.yaml" "be-nsx-lb.yaml" \
          "be-portal-auth.yaml" "be-vcenter-vm.yaml" "bff.yaml" "fe.yaml" \
@@ -634,66 +699,100 @@
     echo ""
   done
   
-  watch kubectl get deploy,po,svc,httpproxy -n vmw-pso-portal
+  watch kubectl get pod -n vmw-pso-portal
   ```
 
   - 確認観点：全てのPodが `1/1` `Running` になるまで待機する
 
     ```text
-    NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
-    deployment.apps/be-history          2/2     2            2           3m59s
-    deployment.apps/be-inventory        2/2     2            2           3m58s
-    deployment.apps/be-notice           2/2     2            2           3m58s
-    deployment.apps/be-nsx-lb           2/2     2            2           3m56s
-    deployment.apps/be-portal-auth      2/2     2            2           3m53s
-    deployment.apps/be-vcenter-vm       2/2     2            2           3m50s
-    deployment.apps/bff                 2/2     2            2           3m47s
-    deployment.apps/console-openresty   2/2     2            2           3m45s
-    deployment.apps/fe                  2/2     2            2           3m46s
-    deployment.apps/postgres            1/1     1            1           4m25s
-    
-    NAME                                     READY   STATUS    RESTARTS        AGE
-    pod/be-history-66f59f5d8c-6rtfs          1/1     Running   1 (2m59s ago)   3m59s
-    pod/be-history-66f59f5d8c-rvb55          1/1     Running   0               3m59s
-    pod/be-inventory-5858548479-9j5hv        1/1     Running   1 (119s ago)    3m58s
-    pod/be-inventory-5858548479-sx8b2        1/1     Running   0               3m58s
-    pod/be-notice-796f985459-6lbwh           1/1     Running   0               3m58s
-    pod/be-notice-796f985459-vdwzw           1/1     Running   1 (98s ago)     3m58s
-    pod/be-nsx-lb-89c7f698f-g25vk            1/1     Running   0               3m56s
-    pod/be-nsx-lb-89c7f698f-rzfcd            1/1     Running   0               3m56s
-    pod/be-portal-auth-7844bdf6d4-rvqxc      1/1     Running   1 (66s ago)     3m53s
-    pod/be-portal-auth-7844bdf6d4-sbwrn      1/1     Running   0               3m53s
-    pod/be-vcenter-vm-64d7ff777b-2xdk8       1/1     Running   0               3m50s
-    pod/be-vcenter-vm-64d7ff777b-clr9k       1/1     Running   1 (54s ago)     3m49s
-    pod/bff-d68c96975-kzh54                  1/1     Running   0               3m46s
-    pod/bff-d68c96975-mvvgj                  1/1     Running   0               3m47s
-    pod/console-openresty-786ff8cb55-2fhp2   1/1     Running   0               3m45s
-    pod/console-openresty-786ff8cb55-6tpp8   1/1     Running   0               3m45s
-    pod/fe-f9dd9465f-ckbpl                   1/1     Running   0               3m46s
-    pod/fe-f9dd9465f-v8k7b                   1/1     Running   0               3m46s
-    pod/postgres-69d9b696b6-bkfpr            1/1     Running   0               4m25s
-    
-    NAME                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-    service/be-console-openresty   ClusterIP   10.102.3.121     <none>        80/TCP     3m45s
-    service/be-history             ClusterIP   10.96.44.15      <none>        8080/TCP   3m59s
-    service/be-inventory           ClusterIP   10.98.75.84      <none>        8080/TCP   3m58s
-    service/be-notice              ClusterIP   10.107.234.169   <none>        8080/TCP   3m58s
-    service/be-nsx-lb              ClusterIP   10.106.185.22    <none>        8080/TCP   3m56s
-    service/be-portal-auth         ClusterIP   10.97.23.16      <none>        8080/TCP   3m53s
-    service/be-vcenter-vm          ClusterIP   10.108.78.179    <none>        8080/TCP   3m49s
-    service/bff                    ClusterIP   10.106.91.4      <none>        8080/TCP   3m47s
-    service/fe                     ClusterIP   10.99.79.220     <none>        80/TCP     3m46s
-    service/postgres               ClusterIP   10.110.136.168   <none>        5432/TCP   4m25s
-    
-    NAME                                         FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
-    httpproxy.projectcontour.io/vmw-pso-portal   vmw-portal.home.ndeguchi.com   envoy-tls    valid    Valid HTTPProxy
+    NAME                                 READY   STATUS    RESTARTS   AGE
+    be-history-66f59f5d8c-4gw6b          1/1     Running   0          3m48s
+    be-history-66f59f5d8c-m5cxb          1/1     Running   0          3m48s
+    be-inventory-5858548479-6bs7c        1/1     Running   0          3m47s
+    be-inventory-5858548479-8l94l        1/1     Running   0          3m47s
+    be-notice-796f985459-rpfhz           1/1     Running   0          3m45s
+    be-notice-796f985459-xjqqz           1/1     Running   0          3m45s
+    be-nsx-lb-89c7f698f-pjr7p            1/1     Running   0          3m39s
+    be-nsx-lb-89c7f698f-x9xbm            1/1     Running   0          3m39s
+    be-portal-auth-7844bdf6d4-27xl6      1/1     Running   0          3m35s
+    be-portal-auth-7844bdf6d4-gkfw4      1/1     Running   0          3m35s
+    be-vcenter-vm-64d7ff777b-9fg7x       1/1     Running   0          3m33s
+    be-vcenter-vm-64d7ff777b-q2gr5       1/1     Running   0          3m34s
+    bff-d68c96975-9c8cs                  1/1     Running   0          3m31s
+    bff-d68c96975-ns9hc                  1/1     Running   0          3m31s
+    console-openresty-786ff8cb55-6nqwf   1/1     Running   0          3m28s
+    console-openresty-786ff8cb55-fqms8   1/1     Running   0          3m28s
+    fe-f9dd9465f-87npl                   1/1     Running   0          3m30s
+    fe-f9dd9465f-jjqkv                   1/1     Running   0          3m30s
+    postgres-69d9b696b6-b7qj8            1/1     Running   0          6m15s
     ```
 
-  
+  ```bash
+  kubectl get deployment -n vmw-pso-portal
+  ```
+
+  - 確認観点：`READY` 列の値が `2/2` または `1/1` であること
+
+    ```text
+    NAME                READY   UP-TO-DATE   AVAILABLE   AGE
+    be-history          2/2     2            2           4m54s
+    be-inventory        2/2     2            2           4m53s
+    be-notice           2/2     2            2           4m51s
+    be-nsx-lb           2/2     2            2           4m45s
+    be-portal-auth      2/2     2            2           4m41s
+    be-vcenter-vm       2/2     2            2           4m40s
+    bff                 2/2     2            2           4m37s
+    console-openresty   2/2     2            2           4m35s
+    fe                  2/2     2            2           4m37s
+    postgres            1/1     1            1           7m21s
+    ```
+
+  ```bash
+  kubectl get svc -n vmw-pso-portal
+  ```
+
+  - 確認観点：各BE/BFF/FE/Postgres のサービスが存在していること
+
+    ```text
+    NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+    be-console-openresty   ClusterIP   10.98.140.81     <none>        80/TCP     5m55s
+    be-history             ClusterIP   10.104.187.20    <none>        8080/TCP   6m15s
+    be-inventory           ClusterIP   10.109.110.211   <none>        8080/TCP   6m14s
+    be-notice              ClusterIP   10.108.129.15    <none>        8080/TCP   6m12s
+    be-nsx-lb              ClusterIP   10.98.140.208    <none>        8080/TCP   6m6s
+    be-portal-auth         ClusterIP   10.99.249.157    <none>        8080/TCP   6m2s
+    be-vcenter-vm          ClusterIP   10.103.225.11    <none>        8080/TCP   6m
+    bff                    ClusterIP   10.101.210.195   <none>        8080/TCP   5m58s
+    fe                     ClusterIP   10.102.124.195   <none>        80/TCP     5m57s
+    postgres               ClusterIP   10.108.109.203   <none>        5432/TCP   8m42s
+    ```
+
+  ```bash
+  kubectl get httpproxy -n vmw-pso-portal
+  ```
+
+  - 確認観点：`STATUS` が `valid` であること
+
+    ```text
+    NAME             FQDN                           TLS SECRET   STATUS   STATUS DESCRIPTION
+    vmw-pso-portal   vmw-portal.home.ndeguchi.com   envoy-tls    valid    Valid HTTPProxy
+    ```
+
   ```bash
   # cronjob
   kubectl apply -f cronjob.yaml
   kubectl get cronjob -n vmw-pso-portal
+  ```
+
+  - 確認観点：以下2つの cronjob が存在すること
+
+    ```text
+    NAME                              SCHEDULE    SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+    be-history-detect-system-errors   * * * * *   False     1        4s              10s
+    vm-refresh                        * * * * *   False     1        4s              10s
+    ```
+
+  ```bash
   watch "kubectl get pod -n vmw-pso-portal | grep -e be-history-detect-system-errors -e vm-refresh"
   ```
 
@@ -706,7 +805,8 @@
     ```
 
   ```bash
-  kubectl get pod -n vmw-pso-portal
+  # ログ確認
+  kubectl get pod -n vmw-pso-portal | grep -e be-history-detect-system-errors -e vm-refresh
   kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-history-detect-system-errors | tail -n 1) -n vmw-pso-portal
   ```
 
@@ -775,13 +875,26 @@
   
   # ステータス監視
   kubectl get pod -n vmw-pso-portal -w | grep seed
-    # pod が Completed になるまで待機
-  
+  ```
+
+  - 確認観点：pod が Completed になるまで待機
+
+    ```text
+    be-portal-auth-seed-w99qb                        0/1     ContainerCreating   0          2s
+    be-portal-auth-seed-w99qb                        1/1     Running             0          17s
+    be-portal-auth-seed-w99qb                        0/1     Completed           0          21s
+    be-portal-auth-seed-w99qb                        0/1     Completed           0          22s
+    be-portal-auth-seed-w99qb                        0/1     Completed           0          22s
+    be-portal-auth-seed-w99qb                        0/1     Completed           0          23s
+    be-portal-auth-seed-w99qb                        0/1     Completed           0          23s
+    ```
+
+  ```bash
   # ログ確認
   kubectl logs $(kubectl get pod -n vmw-pso-portal | awk '{ print $1 }' | grep be-portal-auth-seed | tail -n 1) -n vmw-pso-portal
   ```
 
-  - 以下ログが出力されていること
+  - 確認観点：以下ログが出力されていること
 
     ```text
     Start generate seeds
@@ -799,7 +912,12 @@
 
 - 作業実施サーバ: 管理クライアント
   - 管理クライアントの Firefox から Envoy の FQDN にアクセスし ID: `system_admin`, PW: `system_admin` でログインできることを確認する。
+    ![img](img/85_pso-portal_login.png)
+    ![img](img/86_pso-portal_dashboard.png)
+
   - パスワードを変更する
+    ![img](img/87_pso-portal_change_password01.png)
+    ![img](img/88_pso-portal_change_password02.png)
 
 ### 自動復旧確認
 
@@ -816,7 +934,7 @@
   watch kubectl get pod -n vmw-pso-portal
   ```
 
-  Firefoxで一度ログアウトし再度ログインする。 \
+  Firefoxで一度 PSO Portal からログアウトし再度ログインする。 \
   この時、変更したパスワードでログインできることを確認する。（DBデータの永続性確認）
 
 

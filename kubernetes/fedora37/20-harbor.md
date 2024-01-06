@@ -24,7 +24,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 ## パッケージインストール確認
 
-- docker compose を実行可能であることを確認する
+- docker compose コマンドがインストールされていることを確認する
 
   ```bash
   docker compose version
@@ -62,6 +62,20 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ll harbor/
   ```
 
+  - 確認観点：解凍したファイルが存在すること
+
+    ```text
+    -rw-r--r--. 1 root root     11347 11月  1 16:03 LICENSE
+    drwxr-xr-x. 3 root root        20  1月  4 10:16 common
+    -rw-r--r--. 1 root root      3643 11月  1 16:03 common.sh
+    -rw-r--r--. 1 root root      5889  1月  4 10:16 docker-compose.yml
+    -rw-r--r--. 1 root root 801456311 11月  1 16:04 harbor.v2.9.1.tar.gz
+    -rw-r--r--. 1 root root     13803  1月  4 10:15 harbor.yml
+    -rw-r--r--. 1 root root     13760 11月  1 16:03 harbor.yml.tmpl
+    -rwxr-xr-x. 1 root root      1975 11月  1 16:03 install.sh
+    -rwxr-xr-x. 1 root root      1881 11月  1 16:03 prepare
+    ```
+
 - Harbor のコンテナイメージをロードする
 
   ```bash
@@ -69,12 +83,12 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
   ll
   docker images
   docker load < harbor.v2.9.1.tar.gz
-  # 処理に時間がかかるため数分待機
+    # -> 処理に時間がかかるため数分待機
   
   docker images
   ```
 
-  - 確認観点：ロードしたイメージが存在すること
+  - 確認観点：ロードした以下イメージが存在すること
 
     ```text
     <出力例>
@@ -192,46 +206,9 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
         DNS:harbor2.home.ndeguchi.com, IP Address:192.168.14.40
     ```
 
-> 不要なはず
-> ### CA 証明書を Trust Anchor に登録
-> 
-> - Harbor の CA 証明書をサーバの Trust Anchor に登録する。
-> 
->   ```bash
->   # get list before update
->   cd
->   trust list > trust_list_before.txt
->   ll trust_list_before.txt
->   cat trust_list_before.txt
->   
->   # update
->   cp ca.crt /etc/pki/ca-trust/source/anchors/
->   update-ca-trust
->   
->   # get list after update
->   trust list > trust_list_after.txt
->   ll trust_list_after.txt
->   cat trust_list_after.txt
->   
->   # diff
->   diff trust_list_before.txt trust_list_after.txt
->   ```
-> 
->   - 確認観点：Harbor の CA 証明書が差分として出力されること
-> 
->     ```text
->     <出力例>
->     > pkcs11:id=%2C%A4%D7%54%77%D8%EF%0E%DE%35%DE%4A%29%2D%C1%02%52%05%41%BA;type=cert
->     >     type: certificate
->     >     label: harbor2.home.ndeguchi.com
->     >     trust: anchor
->     >     category: authority
->     >
->     ```
-
 ### Provide the Certificates to Harbor and Docker
 
-- Harbor が上記で作成した SSL 証明書を用いて起動するよう設定
+- 上記で作成した SSL 証明書を用いて Harbor が起動するよう設定
 
   ```bash
   # 1. Copy the server certificate and key into the certficates folder on your Harbor host.
@@ -271,7 +248,7 @@ CLI の作業は全て `root` ユーザで作業を実施すること。
 
 ## Configure the Harbor YML File
 
-- harbor を起動する際に指定する設定ファイルを修正する
+- Harbor をの設定ファイルを修正する
 
   ```bash
   cd ~/harbor/

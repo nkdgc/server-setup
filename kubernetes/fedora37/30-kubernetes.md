@@ -348,8 +348,10 @@
             server k8s-cp03 192.168.14.13:6443 check
     ```
 
+    - k8s-cp01 〜 k8s-cp03
+      - ControlPlane#01-03 の Hostname を指定
     - 192.168.14.11 〜 192.168.14.13
-      - ControlPlane#1-3 の IP アドレスを指定
+      - ControlPlane#01-03 の IP アドレスを指定
 
   ```bash
   # haproxy.cfg の妥当性確認
@@ -506,7 +508,7 @@
 
   ```bash
   # Kubernetes で必要となるコンテナイメージの一覧を取得
-  kubeadm config images list
+  kubeadm config images list --kubernetes-version 1.28.5
   ```
 
   - 以下のようにコンテナイメージのリストが表示されるためこれをメモする
@@ -586,6 +588,7 @@
   - image_list.txt に記載したコンテナイメージの tar.gz ファイルが存在すること
 
     ```text
+    <出力例>
     -rw-r--r--  1 root  root   15878241 12 31 23:01 registry.k8s.io_coredns_coredns_v1.10.1.tar.gz
     -rw-r--r--  1 root  root  101234813 12 31 23:01 registry.k8s.io_etcd_3.5.9-0.tar.gz
     -rw-r--r--  1 root  root   33875269 12 31 23:01 registry.k8s.io_kube-apiserver_v1.28.5.tar.gz
@@ -683,7 +686,7 @@
   docker images | grep ${harbor_fqdn}/kubernetes
   ```
 
-  -確認観点： tag 付けしたイメージが存在すること
+  - 確認観点： tag 付けしたイメージが存在すること
 
     ```text
     <出力例>
@@ -710,7 +713,7 @@
 - 実施対象サーバ：ControlPlane#01 のみ **(注意)**
 
   ```bash
-  kubeadm config images list | grep pause
+  kubeadm config images list --kubernetes-version 1.28.5 | grep pause
   ```
 
   - pause コンテナのバージョンをメモする。以下例では `3.9`
@@ -948,23 +951,27 @@
   1. Harbor にログイン
   1. `NEW PROJECT` ボタンから `calico` と `tigera` の2つの新規プロジェクトを作成
 
-     | 項目                 | 値                |
-     | :---                 | :---              |
-     | Project Name         | calico            |
-     | Access Level         | Public にチェック |
-     | Project quota limits | -1 GiB            |
-     | Proxy Cache          | off               |
+     - calico
 
-     ![img](img/61_harbor_create_calico_project.png)
+       | 項目                 | 値                |
+       | :---                 | :---              |
+       | Project Name         | calico            |
+       | Access Level         | Public にチェック |
+       | Project quota limits | -1 GiB            |
+       | Proxy Cache          | off               |
 
-     | 項目                 | 値                |
-     | :---                 | :---              |
-     | Project Name         | tigera            |
-     | Access Level         | Public にチェック |
-     | Project quota limits | -1 GiB            |
-     | Proxy Cache          | off               |
+       ![img](img/61_harbor_create_calico_project.png)
 
-     ![img](img/63_harbor_create_tigera_project.png)
+     - tigera
+
+       | 項目                 | 値                |
+       | :---                 | :---              |
+       | Project Name         | tigera            |
+       | Access Level         | Public にチェック |
+       | Project quota limits | -1 GiB            |
+       | Proxy Cache          | off               |
+
+       ![img](img/63_harbor_create_tigera_project.png)
 
 ### コンテナイメージ取得
 
@@ -1014,6 +1021,7 @@
   - 確認観点：gzip で圧縮したファイルが存在すること
 
     ```text
+    <出力例>
     -rw-r--r--  1 root  root  39134954  1  1 14:41 calico_apiserver_v3.26.3.tar.gz
     -rw-r--r--  1 root  root  92607724  1  1 14:41 calico_cni_v3.26.3.tar.gz
     -rw-r--r--  1 root  root   8853022  1  1 14:41 calico_csi_v3.26.3.tar.gz
@@ -1126,7 +1134,27 @@
   done
 
   docker images | grep -e calico -e tigera | grep ${harbor_fqdn}
+  ```
+
+  - 確認観点：Tag を付与したコンテナイメージの一覧が出力されること
+
+    ```text
+    <出力例>
+    harbor2.home.ndeguchi.com/tigera/operator                v1.30.7   c149c918030e   3 months ago   66.7MB
+    harbor2.home.ndeguchi.com/calico/typha                   v3.26.3   5993c7d25ac5   3 months ago   67.4MB
+    harbor2.home.ndeguchi.com/calico/dikastes                v3.26.3   036e7920c022   3 months ago   41.3MB
+    harbor2.home.ndeguchi.com/calico/ctl                     v3.26.3   e763d24e4194   3 months ago   65.1MB
+    harbor2.home.ndeguchi.com/calico/kube-controllers        v3.26.3   08c1b67c88ce   3 months ago   74.3MB
+    harbor2.home.ndeguchi.com/calico/apiserver               v3.26.3   ae7746258309   3 months ago   92.1MB
+    harbor2.home.ndeguchi.com/calico/cni                     v3.26.3   fb04b19c1058   3 months ago   209MB
+    harbor2.home.ndeguchi.com/calico/node-driver-registrar   v3.26.3   9e57d60578db   3 months ago   22.8MB
+    harbor2.home.ndeguchi.com/calico/csi                     v3.26.3   ef4de4651fa0   3 months ago   18.3MB
+    harbor2.home.ndeguchi.com/calico/pod2daemon-flexvol      v3.26.3   aff13070e5c0   3 months ago   15MB
+    harbor2.home.ndeguchi.com/calico/node                    v3.26.3   17e960f4e39c   3 months ago   247MB
+    ```
+
   
+  ```bash
   # Push
   for image in $(docker images | grep -e calico -e tigera | grep ${harbor_fqdn} | awk '{ print $1":"$2 }'); do
     echo "===== ${image} ====="
@@ -1227,8 +1255,6 @@
   - 以下が差分として出力されることを確認する
 
     ```diff
-    --- custom-resources.yaml.bak   2024-01-01 14:22:24.012329030 +0900
-    +++ custom-resources.yaml       2024-01-01 14:26:30.226814192 +0900
     @@ -5,12 +5,13 @@
      metadata:
        name: default
@@ -1455,8 +1481,18 @@
   docker tag quay.io/metallb/speaker:v0.13.12     ${harbor_fqdn}/metallb/speaker:v0.13.12
   docker tag quay.io/metallb/controller:v0.13.12  ${harbor_fqdn}/metallb/controller:v0.13.12
   
-  docker images | grep -e metallb | sort
+  docker images | grep -e metallb | grep ${harbor_fqdn}
+  ```
+
+  - 確認観点：Tag 付けしたコンテナイメージが存在すること
+
+    ```text
+    <出力例>
+    harbor2.home.ndeguchi.com/metallb/speaker      v0.13.12   94c5f9675e59   2 months ago   118MB
+    harbor2.home.ndeguchi.com/metallb/controller   v0.13.12   2991becceb02   2 months ago   65.7MB
+    ```
   
+  ```bash
   # push
   docker push ${harbor_fqdn}/metallb/speaker:v0.13.12
   docker push ${harbor_fqdn}/metallb/controller:v0.13.12
@@ -1525,8 +1561,6 @@
   - 確認観点：レジストリが quay.io から harbor に変更されていること
 
     ```diff
-    --- metallb-native.yaml.org     2024-01-01 15:48:13.462351205 +0900
-    +++ metallb-native.yaml 2024-01-01 15:50:04.669333347 +0900
     @@ -1736,7 +1736,7 @@
                value: memberlist
              - name: METALLB_DEPLOYMENT
@@ -1866,8 +1900,18 @@
   docker tag ghcr.io/projectcontour/contour:v1.27.0 ${harbor_fqdn}/contour/contour:v1.27.0
   docker tag envoyproxy/envoy:v1.28.0               ${harbor_fqdn}/contour/envoy:v1.28.0
   
-  docker images | grep -e contour -e envoy | sort
-  
+  docker images | grep -e contour -e envoy | grep ${harbor_fqdn}
+  ```
+
+  - 確認観点：Tag 付けしたコンテナイメージが存在すること
+
+    ```text
+    <出力例>
+    harbor2.home.ndeguchi.com/contour/contour   v1.27.0   9440412ccd1a   2 months ago   50.7MB
+    harbor2.home.ndeguchi.com/contour/envoy     v1.28.0   297d276929fd   2 months ago   165MB
+    ```
+
+  ```bash
   # Push
   docker push ${harbor_fqdn}/contour/contour:v1.27.0
   docker push ${harbor_fqdn}/contour/envoy:v1.28.0
@@ -1892,8 +1936,6 @@
   - 確認観点：レジストリが ghcr.io, docker.io から harbor に変更されていること
 
     ```diff
-    --- contour.yaml.org    2024-01-01 16:57:16.310751864 +0900
-    +++ contour.yaml        2024-01-01 16:59:31.113507588 +0900
     @@ -8377,7 +8377,7 @@
          spec:
            containers:
