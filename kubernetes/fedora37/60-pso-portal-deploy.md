@@ -637,6 +637,13 @@
         (${envoy_fqdn}.crtの中身)
       tls.key: |
         (${envoy_fqdn}.keyの中身)
+    ---
+    apiVersion: projectcontour.io/v1
+    kind: HTTPProxy
+    (...省略...)
+          services:
+            - name: be-console-openresty
+              port: 80
     ```
 
   ```bash
