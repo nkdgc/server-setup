@@ -1047,6 +1047,9 @@
        ## https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/upstream-servers
        ## This configuration is deprecated, please use `extraFiles` instead.
     ```
+    
+    - 192.168.12.4
+      - Syslog サーバの IP アドレス
 
   ```bash
   # manifestファイル作成
