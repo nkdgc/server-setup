@@ -287,11 +287,12 @@
   
   ```bash
   # Tag
+  tag=v0.1
   for label in ${images[@]}; do
     echo "===== ${label} ====="
     src_image=$(docker images | grep "${label} " | awk '{ print $1":"$2 }')
     echo "- src_image = ${src_image}"
-    dst_image="${harbor_fqdn}/vmw-pso-portal/${label}:latest"
+    dst_image="${harbor_fqdn}/vmw-pso-portal/${label}:${tag}"
     echo "- dst_image = ${dst_image}"
     docker tag ${src_image} ${dst_image} || error_msg "failed to tag ${dst_image}"
     docker images ${dst_image} || error_msg "failed to list image ${dst_image}"
