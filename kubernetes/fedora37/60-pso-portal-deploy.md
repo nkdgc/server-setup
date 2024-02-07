@@ -703,7 +703,7 @@
   # 適用
   for yaml in ${yamls[@]}; do
     echo "----- ${yaml} -----"
-    k apply -f ${yaml}
+    kubectl apply -f ${yaml}
     echo ""
   done
   
