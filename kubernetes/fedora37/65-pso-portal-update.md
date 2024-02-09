@@ -95,3 +95,31 @@
     postgres            1/1     1            1           32d
     ```
 
+  ```bash
+  for pod in $(kubectl get pod -n vmw-pso-portal | grep -v -e NAME -e history-detect-system -e console-openresty -e postgres -e vm-refresh | awk '{ print $1 }'); do
+    image=$(kubectl get pod ${pod} -n vmw-pso-portal -o yaml | grep "image:" | head -n 1)
+    echo "${pod} ${image}"
+  done
+  ```
+
+  - 確認観点：指定したTagの値がPodのコンテナで指定されていること
+
+    ```text
+    be-history-7b95457ddb-wnwcp     image: harbor.energia.pso-portal/vmw-pso-portal/be-history:latest
+    be-history-7b95457ddb-xn4kl     image: harbor.energia.pso-portal/vmw-pso-portal/be-history:latest
+    be-inventory-bb46fd96b-2dw4r     image: harbor.energia.pso-portal/vmw-pso-portal/be-inventory:latest
+    be-inventory-bb46fd96b-4h9m2     image: harbor.energia.pso-portal/vmw-pso-portal/be-inventory:latest
+    be-notice-685b54cb84-2wd7c     image: harbor.energia.pso-portal/vmw-pso-portal/be-notice:latest
+    be-notice-685b54cb84-jhb9m     image: harbor.energia.pso-portal/vmw-pso-portal/be-notice:latest
+    be-nsx-lb-8bb96bb4d-lmfm7     image: harbor.energia.pso-portal/vmw-pso-portal/be-nsx_lb:latest
+    be-nsx-lb-8bb96bb4d-snk5j     image: harbor.energia.pso-portal/vmw-pso-portal/be-nsx_lb:latest
+    be-portal-auth-77c84b9bd5-ggppd     image: harbor.energia.pso-portal/vmw-pso-portal/be-portal_auth:latest
+    be-portal-auth-77c84b9bd5-m5llp     image: harbor.energia.pso-portal/vmw-pso-portal/be-portal_auth:latest
+    be-vcenter-vm-68b897b8d7-7kvgx     image: harbor.energia.pso-portal/vmw-pso-portal/be-vcenter_vm:latest
+    be-vcenter-vm-68b897b8d7-gcfrc     image: harbor.energia.pso-portal/vmw-pso-portal/be-vcenter_vm:latest
+    bff-5fb6bf9cd-p2pbr     image: harbor.energia.pso-portal/vmw-pso-portal/bff:latest
+    bff-5fb6bf9cd-t5f5m     image: harbor.energia.pso-portal/vmw-pso-portal/bff:latest
+    fe-8f7844bf6-8lpsc     image: harbor.energia.pso-portal/vmw-pso-portal/fe:latest
+    fe-8f7844bf6-bslq9     image: harbor.energia.pso-portal/vmw-pso-portal/fe:latest
+    ```
+

@@ -1,5 +1,8 @@
 # PSO Portal DB Backup/Restore
 
+PSO Portal の DB を Backup / Restore する手順を以下に記載する。 \
+作業は全て管理クライアントで実施すること。
+
 ## Backup
 
 - PostgreSQL の Pod 名を確認する。
