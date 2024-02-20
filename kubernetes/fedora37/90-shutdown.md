@@ -129,7 +129,7 @@ shutdown -h now
   - ![img](img/95_harbor.png)
 
 - 正常性確認(3)：管理クライアントの CLI で Harbor にログインできること \
-  作業実施サーバ: Harbor
+  作業実施サーバ: 管理クライアント
   ```bash
   docker login ${harbor_fqdn}
   ```
