@@ -138,7 +138,7 @@ PSO Portal の DB を Backup / Restore する手順を以下に記載する。 \
   ls -l <backupファイル>
     # -> backupファイルが存在すること
 
-  tar -zcvf <backupファイル>
+  tar -zxvf <backupファイル>
   ls -l
     # -> 展開されたディレクトリが存在すること
   
