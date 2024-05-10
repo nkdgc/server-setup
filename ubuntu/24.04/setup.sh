@@ -114,10 +114,10 @@ cp /root/.tmux.conf /home/${NON_ROOT_USERNAME}/.tmux.conf
 chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.tmux.conf
 
 
-echo "--- install asciinema"
-apt-add-repository -y ppa:zanchey/asciinema
-apt-get update
-apt-get install -y asciinema
+# echo "--- install asciinema"
+# apt-add-repository -y ppa:zanchey/asciinema
+# apt-get update
+# apt-get install -y asciinema
 
 
 
