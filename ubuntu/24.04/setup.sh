@@ -34,7 +34,7 @@ EOF
 
 
 echo "--- create ssh key"
-ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
+# ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
 
 # echo "--- add authorized key"
