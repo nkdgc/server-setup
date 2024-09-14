@@ -25,13 +25,9 @@ case "$confirm" in
     echo "Changing hostname to $hostname..."
     hostnamectl set-hostname "${hostname}"
     ;;
-  [nN]*)
+  *)
     echo "Exiting script."
     exit 0
-    ;;
-  *)
-    echo "Invalid input. Please answer 'Y' or 'n'."
-    continue
     ;;
 esac
 
@@ -220,4 +216,25 @@ alias kx=kubectx
 alias kn=kubens
 alias k='kubecolor'
 EOF
+
+echo "--- install docker engine"
+apt-get update
+
+apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt-get update
+apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+usermod -aG docker ${NON_ROOT_USERNAME}
+
+# shutdown -r now
 
