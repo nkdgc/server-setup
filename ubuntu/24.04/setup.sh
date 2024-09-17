@@ -16,14 +16,30 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
+function exec_cmd_rc_0(){
+  cmd=$1
+  echo ""
+  echo "-----"
+  echo "COMMAND: ${cmd}"
+  eval ${cmd}
+  rc=$?
+  if [ ${rc} -eq 0 ]; then
+    echo "RC: ${rc}"
+  else
+    echo "[ERROR] RC: ${rc}"
+    exit 1
+  fi
+}
+
 # Confirm and change the hostname
-echo "--- change hostname"
+echo "---------- change hostname"
 hostname="$1"
 read -p "Change the hostname to ${hostname}? (Y/n): " confirm
 case "$confirm" in
   [yY]*)
     echo "Changing hostname to $hostname..."
-    hostnamectl set-hostname "${hostname}"
+    exec_cmd_rc_0 "hostnamectl set-hostname ${hostname}"
+    # hostnamectl set-hostname "${hostname}"
     ;;
   *)
     echo "Exiting script."
@@ -31,10 +47,11 @@ case "$confirm" in
     ;;
 esac
 
-# echo "--- set root password"
+# echo "---------- set root password"
 # passwd
 
-echo "--- Set aliases"
+echo "---------- Set aliases"
+
 cat <<EOF >> /root/.bashrc
 alias ll='ls -l'
 set -o vi
@@ -55,34 +72,30 @@ alias k=kubectl
 EOF
 
 
-echo "--- create ssh key"
+echo "---------- create ssh key"
 # ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
 
-echo "--- add authorized key"
+echo "---------- add authorized key"
 # echo ${SSH_AUTHORIZED_KEY} >> /root/.ssh/authorized_keys
-echo ${SSH_AUTHORIZED_KEY} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys
+exec_cmd_rc_0 "echo ${SSH_AUTHORIZED_KEY} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys"
 
-# echo "--- change apt repository to ftp.riken.jp"
+# echo "---------- change apt repository to ftp.riken.jp"
 # perl -p -i.bak -e 's%(deb(?:-src|)\s+)https?://(?!archive\.canonical\.com|security\.ubuntu\.com)[^\s]+%$1http://ftp.riken.jp/Linux/ubuntu/%' /etc/apt/sources.list
 
-echo "--- apt update"
-apt update
+echo "---------- apt update, upgrade, install vim/git/tmux/..."
+exec_cmd_rc_0 "apt update"
+exec_cmd_rc_0 "apt upgrade -y"
+exec_cmd_rc_0 "apt install -y vim git openssh-server traceroute tmux vino dconf-editor curl net-tools unzip"
 
-echo "--- apt upgrade"
-apt upgrade -y
-
-echo "--- apt install vim/git/openssh-server/tmux/..."
-apt install -y vim git openssh-server traceroute tmux vino dconf-editor curl net-tools
-
-# echo "--- allow ssh root login"
+# echo "---------- allow ssh root login"
 # SSH_BASE_DIR="/etc/ssh"
 # cat ${SSH_BASE_DIR}/sshd_config | sed -e "s/^#PermitRootLogin.*$/PermitRootLogin yes/g" > ${SSH_BASE_DIR}/sshd_config.mod
 # mv ${SSH_BASE_DIR}/sshd_config.mod ${SSH_BASE_DIR}/sshd_config
 # 
 # systemctl restart sshd
 
-echo "--- create .vimrc (root)"
+echo "---------- create .vimrc (root)"
 
 cat <<EOF > /root/.vimrc
 set nocompatible
@@ -106,11 +119,11 @@ set undodir=/tmp
 set paste
 EOF
 
-echo "--- create .vimrc (${NON_ROOT_USERNAME})"
+echo "---------- create .vimrc (${NON_ROOT_USERNAME})"
 cp /root/.vimrc /home/${NON_ROOT_USERNAME}/.vimrc
 chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.vimrc
 
-echo "--- create .tmux.conf (root)"
+echo "---------- create .tmux.conf (root)"
 
 cat <<EOF > /root/.tmux.conf
 set -g prefix C-q
@@ -131,19 +144,19 @@ bind B setw synchronize-panes on
 bind b setw synchronize-panes off
 EOF
 
-echo "--- create .tmux.conf (${NON_ROOT_USERNAME})"
+echo "---------- create .tmux.conf (${NON_ROOT_USERNAME})"
 cp /root/.tmux.conf /home/${NON_ROOT_USERNAME}/.tmux.conf
 chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.tmux.conf
 
 
-# echo "--- install asciinema"
+# echo "---------- install asciinema"
 # apt-add-repository -y ppa:zanchey/asciinema
 # apt-get update
 # apt-get install -y asciinema
 
 
 
-# echo "--- create network file template"
+# echo "---------- create network file template"
 # 
 # cat <<EOF > /root/99-config.yaml
 # network:
@@ -178,7 +191,7 @@ chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.tmux
 # 
 # chmod 644 /root/99-config.yaml
 
-echo "--- set PS1"
+echo "---------- set PS1"
 cat << 'EOF' >> /root/.bashrc
 NORMAL="\[\e[0m\]"
 RED="\[\e[1;31m\]"
@@ -217,24 +230,22 @@ alias kn=kubens
 alias k='kubecolor'
 EOF
 
-echo "--- install docker engine"
-apt-get update
+echo "---------- install docker engine"
+exec_cmd_rc_0 "apt-get update"
+exec_cmd_rc_0 "apt-get install ca-certificates curl gnupg lsb-release"
+exec_cmd_rc_0 "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
+exec_cmd_rc_0 "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
+# echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+exec_cmd_rc_0 "apt-get update"
+exec_cmd_rc_0 "apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin"
+exec_cmd_rc_0 "usermod -aG docker ${NON_ROOT_USERNAME}"
+exec_cmd_rc_0 "sudo docker --version"
 
-apt-get install \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
-
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-usermod -aG docker ${NON_ROOT_USERNAME}
+echo "---------- install aws cli"
+exec_cmd_rc_0 "curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip"
+exec_cmd_rc_0 "unzip awscliv2.zip"
+exec_cmd_rc_0 "sudo ./aws/install"
+exec_cmd_rc_0 "aws --version"
 
 shutdown -r now
 
