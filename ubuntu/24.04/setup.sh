@@ -245,7 +245,7 @@ echo "---------- install aws cli"
 exec_cmd_rc_0 "curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip"
 exec_cmd_rc_0 "unzip awscliv2.zip"
 exec_cmd_rc_0 "sudo ./aws/install"
-exec_cmd_rc_0 "aws version"
+exec_cmd_rc_0 "aws --version"
 
 shutdown -r now
 
