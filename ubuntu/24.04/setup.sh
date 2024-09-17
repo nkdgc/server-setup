@@ -21,7 +21,7 @@ function exec_cmd_rc_0(){
   echo ""
   echo "-----"
   echo "COMMAND: ${cmd}"
-  ${cmd}
+  eval ${cmd}
   rc=$?
   if [ ${rc} -eq 0 ]; then
     echo "RC: ${rc}"
