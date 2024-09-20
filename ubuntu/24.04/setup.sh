@@ -247,5 +247,11 @@ exec_cmd_rc_0 "unzip awscliv2.zip"
 exec_cmd_rc_0 "sudo ./aws/install"
 exec_cmd_rc_0 "aws --version"
 
+echo "---------- install terraform"
+exec_cmd_rc_0 "wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg"
+exec_cmd_rc_0 "echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list"
+exec_cmd_rc_0 "sudo apt update && sudo apt install -y terraform"
+exec_cmd_rc_0 "terraform -v"
+
 shutdown -r now
 
