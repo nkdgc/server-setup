@@ -190,5 +190,11 @@ exec_cmd_rc_0 "systemctl enable docker"
 exec_cmd_rc_0 "usermod -aG docker ${NON_ROOT_USERNAME}"
 exec_cmd_rc_0 "sudo docker --version"
 
+echo "---------- install terraform"
+exec_cmd_rc_0 "yum install -y yum-utils shadow-utils"
+exec_cmd_rc_0 "yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo"
+exec_cmd_rc_0 "yum -y install terraform"
+exec_cmd_rc_0 "terraform -v"
+
 shutdown -r now
 
