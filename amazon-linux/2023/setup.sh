@@ -47,6 +47,10 @@ case "$confirm" in
     ;;
 esac
 
+echo "---------- change timezone"
+exec_cmd_rc_0 "sudo timedatectl set-timezone Asia/Tokyo"
+exec_cmd_rc_0 "date"
+
 # echo "---------- set root password"
 # passwd
 
