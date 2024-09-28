@@ -242,19 +242,23 @@ exec_cmd_rc_0 "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/shar
 exec_cmd_rc_0 "apt-get update"
 exec_cmd_rc_0 "apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin"
 exec_cmd_rc_0 "usermod -aG docker ${NON_ROOT_USERNAME}"
-exec_cmd_rc_0 "sudo docker --version"
+exec_cmd_rc_0 "sudo docker --version"   # Check
 
 echo "---------- install aws cli"
 exec_cmd_rc_0 "curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip"
 exec_cmd_rc_0 "unzip awscliv2.zip"
 exec_cmd_rc_0 "sudo ./aws/install"
-exec_cmd_rc_0 "aws --version"
+exec_cmd_rc_0 "aws --version"           # Check
 
 echo "---------- install terraform"
 exec_cmd_rc_0 "wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg"
 exec_cmd_rc_0 "echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list"
 exec_cmd_rc_0 "sudo apt update && sudo apt install -y terraform"
-exec_cmd_rc_0 "terraform -v"
+exec_cmd_rc_0 "terraform -v"            # Check
+
+echo "---------- install python3.12"
+exec_cmd_rc_0 "sudo apt install -y python3.12 python3.12-venv"
+exec_cmd_rc_0 "python3 --version"       # Check
+exec_cmd_rc_0 "python3 -m venv -h"      # Check
 
 shutdown -r now
-
