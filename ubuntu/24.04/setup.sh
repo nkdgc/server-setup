@@ -10,10 +10,15 @@ if [ "$(whoami)" != "root" ]; then
 fi
 
 # Check the number of arguments
-if [ "$#" -ne 1 ]; then
-  echo "Error: This script requires exactly one argument (the hostname)."
-  echo "Usage: $0 <hostname>"
-  exit 1
+# if [ "$#" -ne 1 ]; then
+#   echo "Error: This script requires exactly one argument (the hostname)."
+#   echo "Usage: $0 <hostname>"
+#   exit 1
+# fi
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Error: This script requires exactly one argument (the hostname), and an optional --silent flag."
+    echo "Usage: $0 <hostname> [--silent]"
+    exit 1
 fi
 
 function exec_cmd_rc_0(){
@@ -34,18 +39,27 @@ function exec_cmd_rc_0(){
 # Confirm and change the hostname
 echo "---------- change hostname"
 hostname="$1"
-read -p "Change the hostname to ${hostname}? (Y/n): " confirm
-case "$confirm" in
-  [yY]*)
-    echo "Changing hostname to $hostname..."
+silent_mode=false
+if [ "$#" -eq 2 ] && [ "$2" == "--silent" ]; then
+    silent_mode=true
+fi
+if [ "$silent_mode" = false ]; then
+  read -p "Change the hostname to ${hostname}? (Y/n): " confirm
+  case "$confirm" in
+    [yY]*)
+      echo "Changing hostname to $hostname..."
+      exec_cmd_rc_0 "hostnamectl set-hostname ${hostname}"
+      # hostnamectl set-hostname "${hostname}"
+      ;;
+    *)
+      echo "Exiting script."
+      exit 0
+      ;;
+  esac
+else
+    echo "Silent mode enabled. Changing hostname to $hostname..."
     exec_cmd_rc_0 "hostnamectl set-hostname ${hostname}"
-    # hostnamectl set-hostname "${hostname}"
-    ;;
-  *)
-    echo "Exiting script."
-    exit 0
-    ;;
-esac
+fi
 
 echo "---------- change timezone"
 exec_cmd_rc_0 "timedatectl set-timezone Asia/Tokyo"
