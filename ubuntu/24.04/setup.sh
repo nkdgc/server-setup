@@ -105,6 +105,9 @@ exec_cmd_rc_0 "apt update"
 exec_cmd_rc_0 "apt upgrade -y"
 exec_cmd_rc_0 "apt install -y vim git openssh-server traceroute tmux vino dconf-editor curl net-tools unzip"
 
+echo "---------- setup git"
+exec_cmd_rc_0 "git config --global core.editor vim"
+
 # echo "---------- allow ssh root login"
 # SSH_BASE_DIR="/etc/ssh"
 # cat ${SSH_BASE_DIR}/sshd_config | sed -e "s/^#PermitRootLogin.*$/PermitRootLogin yes/g" > ${SSH_BASE_DIR}/sshd_config.mod
