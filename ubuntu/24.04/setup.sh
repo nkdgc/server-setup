@@ -191,4 +191,4 @@ exec_cmd_rc_0 "pyenv versions"
 exec_cmd_rc_0 "pyenv global 3.13"
 exec_cmd_rc_0 "pyenv versions"
 
-shutdown -r now
+sudo shutdown -r now
