@@ -174,7 +174,18 @@ exec_cmd_rc_0 "curl https://pyenv.run | bash"
 
 add_bashrc='
 export PYENV_ROOT="$HOME/.pyenv"
+
+echo "--- debug --->"
+echo $PATH
+ls -l $PYENV_ROOT/bin
+echo "<--- debug ---"
+
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+
+echo "--- debug --->"
+echo $PATH
+echo "<--- debug ---"
+
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"'
 
