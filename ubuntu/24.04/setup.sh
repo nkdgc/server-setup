@@ -65,8 +65,6 @@ exec_cmd_rc_0 "sudo sh -c \"curl ${BASHRC_URL} >> /root/.bashrc\""
 exec_cmd_rc_0 "curl ${BASHRC_URL} >> /home/${NON_ROOT_USERNAME}/.bashrc"
 
 echo "---------- create ssh key"
-# ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
-# su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
 exec_cmd_rc_0 "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
 
 echo "---------- add authorized key"
@@ -192,6 +190,5 @@ exec_cmd_rc_0 "pyenv install 3.13"
 exec_cmd_rc_0 "pyenv versions"
 exec_cmd_rc_0 "pyenv global 3.13"
 exec_cmd_rc_0 "pyenv versions"
-exec_cmd_rc_0 "python --version"
 
 shutdown -r now
