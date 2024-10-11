@@ -172,7 +172,8 @@ exec_cmd_rc_0 "terraform -v"            # Check
 echo "---------- install pyenv"
 exec_cmd_rc_0 "curl https://pyenv.run | bash"
 
-add_bashrc='export PYENV_ROOT="$HOME/.pyenv"
+add_bashrc='
+export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"'
