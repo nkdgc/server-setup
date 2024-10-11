@@ -1,0 +1,51 @@
+set guifont=Osaka-Mono:h16
+set clipboard+=unnamed
+
+colorscheme koehler
+
+set nocompatible
+set number
+set tabstop=2
+set showmatch
+set incsearch
+set hlsearch
+set nowrapscan
+set ignorecase
+
+set fileencodings=iso-2022-jp,utf-8,utf-16le,cp932,euc-jp,default,latin
+set foldmethod=marker
+
+" インクリメント・デクリメントする際、0埋め文字も10進数として扱う。これがないと8進法でインクリメントされる。
+set nf=""
+
+" ESC2回連打で検索のハイライトを消去
+nnoremap <ESC><ESC> :nohlsearch<CR>
+
+set laststatus=2
+set statusline=%t%m%r%h%w\%=[POS=%p%%/%LLINES]\[TYPE=%Y][FORMAT=%{&ff}]\%{'[ENC='.(&fenc!=''?&fenc:&enc).']'}
+
+" 縦幅　デフォルトは24
+" set lines=40
+" 横幅　デフォルトは80
+" set columns=140
+
+" Syntax Highlighting
+syntax enable
+
+" swpファイルの置き場所
+set directory=/Users/ndeguchi/myRepos/tmp/vimswp
+" set directory=/Users/naoki/myRepos/tmp/vimswp
+" set directory=C:/Users/deguchin/myDoc/my_progfile\ \&\ conf/vim73-kaoriya-win64/swp_file
+" set directory=W:\ndeguchi\my_programfile\vim73-kaoriya-win64\swp_file
+
+" バックアップファイルの出力先
+set backupdir=/Users/ndeguchi/myRepos/tmp/vimswp
+
+" undoファイルの出力先
+set undodir=/Users/ndeguchi/myRepos/tmp/vimswp
+
+set paste
+
+"カーソルを点滅させない
+set guicursor=a:blinkon0
+
