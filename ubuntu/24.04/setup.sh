@@ -156,39 +156,61 @@ exec_cmd_rc_0 "unzip awscliv2.zip"
 exec_cmd_rc_0 "sudo ./aws/install"
 exec_cmd_rc_0 "aws --version"           # Check
 
-echo "---------- install terraform"
-exec_cmd_rc_0 "wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg"
-exec_cmd_rc_0 "echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list"
-exec_cmd_rc_0 "sudo apt update && sudo apt install -y terraform"
-exec_cmd_rc_0 "terraform -v"            # Check
+# echo "---------- install terraform"
+# exec_cmd_rc_0 "wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg"
+# exec_cmd_rc_0 "echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list"
+# exec_cmd_rc_0 "sudo apt update && sudo apt install -y terraform"
+# exec_cmd_rc_0 "terraform -v"            # Check
+
+echo "---------- install asdf"
+exec_cmd_rc_0 "git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.1"
+exec_cmd_rc_0 "echo '. "\$HOME/.asdf/asdf.sh"' >> ~/.bashrc"
+exec_cmd_rc_0 '. "$HOME/.asdf/asdf.sh"'
+exec_cmd_rc_0 "echo '. "\$HOME/.asdf/completions/asdf.bash"' >> ~/.bashrc"
+
+echo "---------- install terraform with asdf"
+exec_cmd_rc_0 "asdf plugin add terraform"
+exec_cmd_rc_0 "asdf list all terraform"
+exec_cmd_rc_0 "asdf install terraform latest"
+exec_cmd_rc_0 "asdf list terraform"
+exec_cmd_rc_0 "asdf global terraform latest"
+exec_cmd_rc_0 "asdf list terraform"
 
 # echo "---------- install python3.12"
 # exec_cmd_rc_0 "sudo apt install -y python3.12 python3.12-venv"
 # exec_cmd_rc_0 "python3 --version"       # Check
 # exec_cmd_rc_0 "python3 -m venv -h"      # Check
 
-echo "---------- install pyenv"
-exec_cmd_rc_0 "curl https://pyenv.run | bash"
+# echo "---------- install pyenv"
+# exec_cmd_rc_0 "curl https://pyenv.run | bash"
+# 
+# add_bashrc='
+# export PYENV_ROOT="$HOME/.pyenv"
+# [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+# eval "$(pyenv init -)"
+# eval "$(pyenv virtualenv-init -)"'
+# 
+# exec_cmd_rc_0 'echo "${add_bashrc}" >> .bashrc'
+# exec_cmd_rc_0 "export PYENV_ROOT=\"$HOME/.pyenv\""
+# exec_cmd_rc_0 "export PATH=\"$PYENV_ROOT/bin:$PATH\""
+# exec_cmd_rc_0 "pyenv --version"
+# 
+# echo "---------- install build packages for pyenv"
+# exec_cmd_rc_0 "sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
+# 
+# echo "---------- install python 3.13:latest"
+# exec_cmd_rc_0 "pyenv install -l"
+# exec_cmd_rc_0 "pyenv install 3.13"
+# exec_cmd_rc_0 "pyenv versions"
+# exec_cmd_rc_0 "pyenv global 3.13"
+# exec_cmd_rc_0 "pyenv versions"
 
-add_bashrc='
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"'
+echo "---------- install python with asdf"
+exec_cmd_rc_0 "asdf plugin add python"
+exec_cmd_rc_0 "asdf list all python"
+exec_cmd_rc_0 "asdf install python latest"
+exec_cmd_rc_0 "asdf list python"
+exec_cmd_rc_0 "asdf global python latest"
+exec_cmd_rc_0 "asdf list python"
 
-exec_cmd_rc_0 'echo "${add_bashrc}" >> .bashrc'
-exec_cmd_rc_0 "export PYENV_ROOT=\"$HOME/.pyenv\""
-exec_cmd_rc_0 "export PATH=\"$PYENV_ROOT/bin:$PATH\""
-exec_cmd_rc_0 "pyenv --version"
-
-echo "---------- install build packages for pyenv"
-exec_cmd_rc_0 "sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
-
-echo "---------- install python 3.13:latest"
-exec_cmd_rc_0 "pyenv install -l"
-exec_cmd_rc_0 "pyenv install 3.13"
-exec_cmd_rc_0 "pyenv versions"
-exec_cmd_rc_0 "pyenv global 3.13"
-exec_cmd_rc_0 "pyenv versions"
-
-sudo shutdown -r now
+# sudo shutdown -r now
