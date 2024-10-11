@@ -6,11 +6,11 @@ VIMRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/
 BASHRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bashrc/bashrc.sh"
 TMUXCONF_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/tmux/tmux.conf"
 
-# Check if the script is running as the root user
-if [ "$(whoami)" != "root" ]; then
-    echo "Error: This script must be run as the root user. Please run the script with 'sudo' or as the root user."
-    exit 1
-fi
+# # Check if the script is running as the root user
+# if [ "$(whoami)" != "root" ]; then
+#     echo "Error: This script must be run as the root user. Please run the script with 'sudo' or as the root user."
+#     exit 1
+# fi
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     echo "Error: This script requires exactly one argument (the hostname), and an optional --silent flag."
@@ -45,7 +45,7 @@ if [ "$silent_mode" = false ]; then
   case "$confirm" in
     [yY]*)
       echo "Changing hostname to $hostname..."
-      exec_cmd_rc_0 "hostnamectl set-hostname ${hostname}"
+      exec_cmd_rc_0 "sudo hostnamectl set-hostname ${hostname}"
       ;;
     *)
       echo "Exiting script."
@@ -54,19 +54,20 @@ if [ "$silent_mode" = false ]; then
   esac
 else
     echo "Silent mode enabled. Changing hostname to $hostname..."
-    exec_cmd_rc_0 "hostnamectl set-hostname ${hostname}"
+    exec_cmd_rc_0 "sudo hostnamectl set-hostname ${hostname}"
 fi
 
 echo "---------- change timezone"
-exec_cmd_rc_0 "timedatectl set-timezone Asia/Tokyo"
+exec_cmd_rc_0 "sudo timedatectl set-timezone Asia/Tokyo"
 
 echo "---------- bashrc"
-exec_cmd_rc_0 "curl ${BASHRC_URL} >> /root/.bashrc"
+exec_cmd_rc_0 "sudo sh -c \"curl ${BASHRC_URL} >> /root/.bashrc\""
 exec_cmd_rc_0 "curl ${BASHRC_URL} >> /home/${NON_ROOT_USERNAME}/.bashrc"
 
 echo "---------- create ssh key"
 # ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
-su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
+# su - ${NON_ROOT_USERNAME} -c "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
+exec_cmd_rc_0 "ssh-keygen -t rsa -N '' -f /home/${NON_ROOT_USERNAME}/.ssh/id_rsa"
 
 echo "---------- add authorized key"
 exec_cmd_rc_0 "curl ${SSH_AUTHORIZED_KEY_URL} >> /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys"
@@ -77,9 +78,9 @@ exec_cmd_rc_0 "sed -i '/^$/d' /home/${NON_ROOT_USERNAME}/.ssh/authorized_keys"
 # perl -p -i.bak -e 's%(deb(?:-src|)\s+)https?://(?!archive\.canonical\.com|security\.ubuntu\.com)[^\s]+%$1http://ftp.riken.jp/Linux/ubuntu/%' /etc/apt/sources.list
 
 echo "---------- apt update, upgrade, install vim/git/tmux/..."
-exec_cmd_rc_0 "apt update"
-exec_cmd_rc_0 "apt upgrade -y"
-exec_cmd_rc_0 "apt install -y vim git traceroute tmux curl net-tools unzip"
+exec_cmd_rc_0 "sudo apt update"
+exec_cmd_rc_0 "sudo apt upgrade -y"
+exec_cmd_rc_0 "sudo apt install -y vim git traceroute tmux curl net-tools unzip"
 
 echo "---------- setup git"
 exec_cmd_rc_0 "git config --global core.editor vim"
@@ -92,14 +93,14 @@ exec_cmd_rc_0 "git config --global core.editor vim"
 # systemctl restart sshd
 
 echo "---------- .vimrc"
-exec_cmd_rc_0 "curl ${VIMRC_URL} > /root/.vimrc"
-exec_cmd_rc_0 "cp /root/.vimrc /home/${NON_ROOT_USERNAME}/.vimrc"
-exec_cmd_rc_0 "chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.vimrc"
+exec_cmd_rc_0 "sudo sh -c \"curl ${VIMRC_URL} > /root/.vimrc\""
+exec_cmd_rc_0 "sudo cp /root/.vimrc /home/${NON_ROOT_USERNAME}/.vimrc"
+exec_cmd_rc_0 "sudo chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.vimrc"
 
 echo "---------- .tmux.conf"
-exec_cmd_rc_0 "curl ${TMUXCONF_URL} > /root/.tmux.conf"
-exec_cmd_rc_0 "cp /root/.tmux.conf /home/${NON_ROOT_USERNAME}/.tmux.conf"
-exec_cmd_rc_0 "chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.tmux.conf"
+exec_cmd_rc_0 "sudo sh -c \"curl ${TMUXCONF_URL} > /root/.tmux.conf\""
+exec_cmd_rc_0 "sudo sh -c \"cp /root/.tmux.conf /home/${NON_ROOT_USERNAME}/.tmux.conf\""
+exec_cmd_rc_0 "sudo sh -c \"chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_USERNAME}/.tmux.conf\""
 
 # echo "---------- install asciinema"
 # apt-add-repository -y ppa:zanchey/asciinema
@@ -142,13 +143,13 @@ exec_cmd_rc_0 "chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /home/${NON_ROOT_
 # chmod 644 /root/99-config.yaml
 
 echo "---------- install docker engine"
-exec_cmd_rc_0 "apt-get update"
-exec_cmd_rc_0 "apt-get install ca-certificates curl gnupg lsb-release"
+exec_cmd_rc_0 "sudo apt-get update"
+exec_cmd_rc_0 "sudo apt-get install ca-certificates curl gnupg lsb-release"
 exec_cmd_rc_0 "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
 exec_cmd_rc_0 "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
-exec_cmd_rc_0 "apt-get update"
-exec_cmd_rc_0 "apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin"
-exec_cmd_rc_0 "usermod -aG docker ${NON_ROOT_USERNAME}"
+exec_cmd_rc_0 "sudo apt-get update"
+exec_cmd_rc_0 "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin"
+exec_cmd_rc_0 "sudo usermod -aG docker ${NON_ROOT_USERNAME}"
 exec_cmd_rc_0 "sudo docker --version"   # Check
 
 echo "---------- install aws cli"
