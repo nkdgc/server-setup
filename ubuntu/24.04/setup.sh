@@ -178,7 +178,15 @@ eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"'
 
 exec_cmd_rc_0 'echo "${add_bashrc}" >> .bashrc'
+
+echo "--- debug ---"
+echo $PATH
+
 exec_cmd_rc_0 "source .bashrc"
+
+echo "--- debug ---"
+echo $PATH
+
 exec_cmd_rc_0 "pyenv --version"
 
 echo "---------- install build packages for pyenv"
