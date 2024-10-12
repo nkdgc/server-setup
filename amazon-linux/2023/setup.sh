@@ -144,7 +144,6 @@ exec_cmd_rc_0 "sudo sh -c \"chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /hom
 echo "############### install docker engine ###############"
 
 exec_cmd_rc_0 "sudo dnf install -y docker"
-exec_cmd_rc_0 "sudo systemctl status docker --no-pager"
 exec_cmd_rc_0 "sudo systemctl start docker"
 exec_cmd_rc_0 "sudo systemctl enable docker"
 exec_cmd_rc_0 "sudo systemctl status docker --no-pager"
