@@ -142,7 +142,6 @@ exec_cmd_rc_0 "sudo sh -c \"chown ${NON_ROOT_USERNAME}:${NON_ROOT_USERNAME} /hom
 # chmod 644 /root/99-config.yaml
 
 echo "############### install docker engine ###############"
-
 exec_cmd_rc_0 "sudo dnf install -y docker"
 exec_cmd_rc_0 "sudo systemctl start docker"
 exec_cmd_rc_0 "sudo systemctl enable docker"
