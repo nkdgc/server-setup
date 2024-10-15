@@ -20,16 +20,12 @@ fi
 
 function exec_cmd_rc_0(){
   cmd=$1
-  echo ""
   echo "<----- COMMAND: ${cmd} ----->"
-  echo ""
   eval ${cmd}
   rc=$?
   if [ ${rc} -eq 0 ]; then
-    echo ""
     echo "<----- RC: ${rc} ----->"
   else
-    echo ""
     echo "<----- [ERROR] RC: ${rc} ----->"
     exit 1
   fi
