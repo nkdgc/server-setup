@@ -1,5 +1,6 @@
 alias ll='ls -l'
 alias gl='git log --all --graph --oneline'
+alias tf='terraform'
 set -o vi
 export EDITOR=vim
 
