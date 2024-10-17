@@ -1,4 +1,5 @@
 alias ll='ls -l'
+alias gl='git log --all --graph --oneline'
 set -o vi
 export EDITOR=vim
 
