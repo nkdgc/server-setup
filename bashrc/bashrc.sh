@@ -1,5 +1,5 @@
 alias ll='ls -l'
-alias gl='git log --all --graph --oneline'
+alias gl="git log --graph --all --abbrev-commit --pretty=format:'%C(red)%h %C(reset)-%C(yellow)%d%Creset %s %Cgreen(%ci) %C(bold blue)<%an>'"
 alias tf='terraform'
 set -o vi
 export EDITOR=vim
