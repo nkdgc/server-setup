@@ -1,2 +1,0 @@
-variable "ig_no" {}
-
