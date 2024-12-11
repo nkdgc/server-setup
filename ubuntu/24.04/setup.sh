@@ -215,4 +215,8 @@ exec_cmd_rc_0 "asdf global python latest"
 exec_cmd_rc_0 "asdf list python"
 exec_cmd_rc_0 "sh -c 'python --version'"
 
+echo "############### install git-remote-codecommit (for workshop-studio) ###############"
+exec_cmd_rc_0 "pip install git-remote-codecommit"
+
 sudo shutdown -r now
+
