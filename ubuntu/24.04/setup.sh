@@ -77,7 +77,9 @@ echo "############### apt update, upgrade, install vim/git/tmux/... ############
 exec_cmd_rc_0 "sudo apt update"
 exec_cmd_rc_0 "sudo dpkg --configure -a"
 exec_cmd_rc_0 "sudo apt upgrade -y"
-exec_cmd_rc_0 "sudo apt install -y vim git traceroute tmux curl net-tools zip unzip postgresql-client"
+exec_cmd_rc_0 "sudo apt install -y vim git traceroute tmux curl net-tools zip unzip postgresql-client apache2-utils"
+# memo:
+# - apache2-utils for Apache Bench (ab)
 
 echo "############### setup git ###############"
 exec_cmd_rc_0 "git config --global core.editor vim"
