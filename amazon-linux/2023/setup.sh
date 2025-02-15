@@ -3,7 +3,7 @@
 NON_ROOT_USERNAME="ec2-user"
 SSH_AUTHORIZED_KEY_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/authorized_keys/authorized_keys"
 VIMRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/vim/linux-vimrc"
-BASHRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bashrc/bashrc.sh"
+BASHRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bash/dot_bashrc"
 TMUXCONF_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/tmux/tmux.conf"
 
 # # Check if the script is running as the root user
