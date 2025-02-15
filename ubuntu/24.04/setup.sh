@@ -3,7 +3,7 @@
 SSH_AUTHORIZED_KEY_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/authorized_keys/authorized_keys"
 VIMRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/vim/linux-vimrc"
 BASHRC_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bash/dot_bashrc"
-DIRCOLOR_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bash/dot_dircolors"
+DIRCOLORS_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/bash/dot_dircolors"
 TMUXCONF_URL="https://raw.githubusercontent.com/nkdgc/server-setup/refs/heads/main/tmux/tmux.conf"
 
 # Check if the script is running as the root user
@@ -14,6 +14,7 @@ fi
 
 silent=false
 light=false
+reboot=false
 
 while (( $# > 0 ))
 do
@@ -25,6 +26,10 @@ do
     # --- light ---
     --light)
       light=true
+      ;;
+    # --- reboot ---
+    --reboot)
+      reboot=true
       ;;
     # --- hostname ---
     -h | --hostname | --hostname=*)
@@ -62,6 +67,7 @@ done
 echo "----- debug -----"
 echo "silent   : $silent"
 echo "light    : $light"
+echo "reboot   : $reboot"
 echo "hostname : $hostname"
 echo "user     : $user"
 
@@ -249,34 +255,32 @@ if ! "$light"; then
   if [ -z "$user" ]; then
     exec_cmd_rc_0 "git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.1"
     exec_cmd_rc_0 "echo '. "\$HOME/.asdf/asdf.sh"' >> ~/.bashrc"
-    exec_cmd_rc_0 '. "$HOME/.asdf/asdf.sh"'
     exec_cmd_rc_0 "echo '. "\$HOME/.asdf/completions/asdf.bash"' >> ~/.bashrc"
   else
     exec_cmd_rc_0 "su - ${user} -c \"git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.1\""
-    exec_cmd_rc_0 "su - ${user} -c \"echo '. "\$HOME/.asdf/asdf.sh"' >> ~/.bashrc\""
-    # exec_cmd_rc_0 'su - ${user} -c . "$HOME/.asdf/asdf.sh"'
-    exec_cmd_rc_0 "su - ${user} -c \"echo '. "\$HOME/.asdf/completions/asdf.bash"' >> ~/.bashrc\""
+    exec_cmd_rc_0 "su - ${user} -c \"echo '. "\\\$HOME/.asdf/asdf.sh"' >> ~/.bashrc\""
+    exec_cmd_rc_0 "su - ${user} -c \"echo '. "\\\$HOME/.asdf/completions/asdf.bash"' >> ~/.bashrc\""
   fi
 fi
 
 if ! "$light"; then
   echo "############### install terraform with asdf ###############"
   if [ -z "$user" ]; then
-    exec_cmd_rc_0 "asdf plugin add terraform"
-    exec_cmd_rc_0 "asdf list all terraform"
-    exec_cmd_rc_0 "asdf install terraform latest"
-    exec_cmd_rc_0 "asdf list terraform"
-    exec_cmd_rc_0 "asdf global terraform latest"
-    exec_cmd_rc_0 "asdf list terraform"
-    exec_cmd_rc_0 "sh -c 'terraform version'"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf plugin add terraform"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list all terraform"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf install terraform latest"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list terraform"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf global terraform latest"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list terraform"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && sh -c 'terraform version'"
   else
-    exec_cmd_rc_0 "su - ${user} -c asdf plugin add terraform"
-    exec_cmd_rc_0 "su - ${user} -c asdf list all terraform"
-    exec_cmd_rc_0 "su - ${user} -c asdf install terraform latest"
-    exec_cmd_rc_0 "su - ${user} -c asdf list terraform"
-    exec_cmd_rc_0 "su - ${user} -c asdf global terraform latest"
-    exec_cmd_rc_0 "su - ${user} -c asdf list terraform"
-    exec_cmd_rc_0 "su - ${user} -c sh -c 'terraform version'"
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf plugin add terraform\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list all terraform\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf install terraform latest\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list terraform\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf global terraform latest\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list terraform\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && sh -c 'terraform version'\""
   fi
 fi
 
@@ -287,21 +291,21 @@ fi
 
 # echo "############### install pyenv ###############"
 # exec_cmd_rc_0 "curl https://pyenv.run | bash"
-# 
+#
 # add_bashrc='
 # export PYENV_ROOT="$HOME/.pyenv"
 # [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 # eval "$(pyenv init -)"
 # eval "$(pyenv virtualenv-init -)"'
-# 
+#
 # exec_cmd_rc_0 'echo "${add_bashrc}" >> .bashrc'
 # exec_cmd_rc_0 "export PYENV_ROOT=\"$HOME/.pyenv\""
 # exec_cmd_rc_0 "export PATH=\"$PYENV_ROOT/bin:$PATH\""
 # exec_cmd_rc_0 "pyenv --version"
-# 
+#
 # echo "############### install build packages for pyenv ###############"
-# exec_cmd_rc_0 "sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
-# 
+# exec_cmd_rc_0 "sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-devliblzma-dev"
+#
 # echo "############### install python 3.13:latest ###############"
 # exec_cmd_rc_0 "pyenv install -l"
 # exec_cmd_rc_0 "pyenv install 3.13"
@@ -312,30 +316,29 @@ fi
 if ! "$light"; then
   echo "############### install python with asdf ###############"
   if [ -z "$user" ]; then
-    exec_cmd_rc_0 "asdf plugin add python"
-    exec_cmd_rc_0 "asdf list all python"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf plugin add python"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list all python"
     exec_cmd_rc_0 "apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
-    exec_cmd_rc_0 "asdf install python latest"
-    exec_cmd_rc_0 "asdf list python"
-    exec_cmd_rc_0 "asdf global python latest"
-    exec_cmd_rc_0 "asdf list python"
-    exec_cmd_rc_0 "sh -c 'python --version'"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf install python latest"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list python"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf global python latest"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && asdf list python"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && sh -c 'python --version'"
     # --- install git-remote-codecommit (for workshop-studio) ---
-    exec_cmd_rc_0 "pip install git-remote-codecommit"
+    exec_cmd_rc_0 "source ~/.asdf/asdf.sh && pip install git-remote-codecommit"
   else
-    exec_cmd_rc_0 "su - ${user} -c asdf plugin add python"
-    exec_cmd_rc_0 "su - ${user} -c asdf list all python"
-    exec_cmd_rc_0 "su - ${user} -c sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
-    exec_cmd_rc_0 "su - ${user} -c asdf install python latest"
-    exec_cmd_rc_0 "su - ${user} -c asdf list python"
-    exec_cmd_rc_0 "su - ${user} -c asdf global python latest"
-    exec_cmd_rc_0 "su - ${user} -c asdf list python"
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf plugin add python\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list all python\""
+    exec_cmd_rc_0 "apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev"
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf install python latest\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list python\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf global python latest\""
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && asdf list python\""
     # install git-remote-codecommit (for workshop-studio)
-    exec_cmd_rc_0 "su - ${user} -c pip install git-remote-codecommit"
+    exec_cmd_rc_0 "su - ${user} -c \"source /home/${user}/.asdf/asdf.sh && pip install git-remote-codecommit\""
   fi
 fi
 
 if "$reboot"; then
-  sudo shutdown -r now
+  shutdown -r now
 fi
-
