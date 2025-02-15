@@ -132,8 +132,8 @@ exec_cmd_rc_0 "curl ${SSH_AUTHORIZED_KEY_URL} >> ~/.ssh/authorized_keys"
 # delete blank line
 exec_cmd_rc_0 "sed -i '/^$/d' ~/.ssh/authorized_keys"
 if [ -n "$user" ]; then
-  exec_cmd_rc_0 "cp ~/.ssh/authorized_keys /home/${user}/authorized_keys"
-  exec_cmd_rc_0 "chown ${user}:${user} /home/${user}/authorized_keys"
+  exec_cmd_rc_0 "cp ~/.ssh/authorized_keys /home/${user}/.ssh/authorized_keys"
+  exec_cmd_rc_0 "chown ${user}:${user} /home/${user}/.ssh/authorized_keys"
 fi
 
 echo "############### apt update, upgrade, install vim/git/tmux/... ###############"
