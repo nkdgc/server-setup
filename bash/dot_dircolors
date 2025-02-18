@@ -1,5 +1,13 @@
 # dircolors -p > ~/.dircolors
 
+# < DIR 01;34 # directory
+# ---
+# > DIR 01;32 # directory
+
+# < OTHER_WRITABLE 34;42 # dir that is other-writable (o+w) and not sticky
+# ---
+# > OTHER_WRITABLE 01;32 # dir that is other-writable (o+w) and not sticky
+
 # Configuration file for dircolors, a utility to help you set the
 # LS_COLORS environment variable used by GNU ls with the --color option.
 # Copyright (C) 1996-2023 Free Software Foundation, Inc.
